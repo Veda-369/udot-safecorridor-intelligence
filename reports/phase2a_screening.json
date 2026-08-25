@@ -1,6 +1,6 @@
 {
   "status": "success",
-  "generated_at_utc": "2026-08-25T18:04:26.114064+00:00",
+  "generated_at_utc": "2026-08-25T20:34:00.105215+00:00",
   "method": "Phase 2A peer-adjusted route screening",
   "scope": "Numeric UDOT route keys 1-999 only for the executive candidate screen; other routes are retained in Phase 1 data.",
   "guardrails": {
@@ -276,7 +276,7 @@
     },
     {
       "route_key": "39",
-      "route_miles": 67.83,
+      "route_miles": 67.84,
       "weighted_aadt": 3893.0,
       "crashes": 2253.0,
       "severe_crashes": 110.0,

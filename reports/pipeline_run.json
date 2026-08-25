@@ -1,8 +1,8 @@
 {
   "status": "success",
-  "started_at_utc": "2026-08-25T17:10:43.991058+00:00",
-  "finished_at_utc": "2026-08-25T17:15:23.819528+00:00",
-  "duration_seconds": 279.82847,
+  "started_at_utc": "2026-08-25T20:31:21.529395+00:00",
+  "finished_at_utc": "2026-08-25T20:33:59.207450+00:00",
+  "duration_seconds": 157.678055,
   "crash_rows": 449804,
   "aadt_rows": 4574,
   "quality": [
