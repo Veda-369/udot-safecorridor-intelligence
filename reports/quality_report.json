@@ -1,0 +1,61 @@
+{
+  "generated_at_utc": "2026-08-25T17:10:43.991058+00:00",
+  "checks": [
+    {
+      "name": "crash_rows_present",
+      "passed": true,
+      "value": 449804,
+      "threshold": "> 0",
+      "severity": "error"
+    },
+    {
+      "name": "aadt_rows_present",
+      "passed": true,
+      "value": 4574,
+      "threshold": "> 0",
+      "severity": "error"
+    },
+    {
+      "name": "crash_id_missing_pct",
+      "passed": "True",
+      "value": 0.0,
+      "threshold": "<= 1%",
+      "severity": "error"
+    },
+    {
+      "name": "crash_id_duplicate_pct",
+      "passed": "True",
+      "value": 0.0,
+      "threshold": "<= 1%",
+      "severity": "error"
+    },
+    {
+      "name": "severity_missing_pct",
+      "passed": "True",
+      "value": 0.0,
+      "threshold": "<= 1%",
+      "severity": "error"
+    },
+    {
+      "name": "plausible_coordinate_pct",
+      "passed": "True",
+      "value": 99.874,
+      "threshold": ">= 95%",
+      "severity": "warning"
+    },
+    {
+      "name": "aadt_route_missing_pct",
+      "passed": "True",
+      "value": 0.0,
+      "threshold": "<= 1%",
+      "severity": "error"
+    },
+    {
+      "name": "aadt_segment_length_missing_pct",
+      "passed": "True",
+      "value": 0.131,
+      "threshold": "<= 5%",
+      "severity": "error"
+    }
+  ]
+}

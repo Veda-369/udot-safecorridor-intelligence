@@ -1,0 +1,184 @@
+{
+  "status": "success",
+  "generated_at_utc": "2026-08-25T18:59:52.179344+00:00",
+  "summary": {
+    "severe_crashes": 12190,
+    "fatal_crashes": 1953,
+    "counties_represented": 29,
+    "routes_represented": 1160,
+    "spatially_matched": 7421
+  },
+  "year_field_detected": "TRY_CAST(crash_year AS INTEGER)",
+  "years": [
+    {
+      "crash_year": 2018,
+      "severe_crashes": 1380
+    },
+    {
+      "crash_year": 2019,
+      "severe_crashes": 1327
+    },
+    {
+      "crash_year": 2020,
+      "severe_crashes": 1541
+    },
+    {
+      "crash_year": 2021,
+      "severe_crashes": 1715
+    },
+    {
+      "crash_year": 2022,
+      "severe_crashes": 1663
+    },
+    {
+      "crash_year": 2023,
+      "severe_crashes": 1680
+    },
+    {
+      "crash_year": 2024,
+      "severe_crashes": 1773
+    },
+    {
+      "crash_year": 2025,
+      "severe_crashes": 1111
+    }
+  ],
+  "top_counties": [
+    {
+      "county_name": "SALT LAKE",
+      "severe_crashes": 3631,
+      "fatal_crashes": 537.0,
+      "speed_related_crashes": 752.0,
+      "dui_crashes": 300.0,
+      "distracted_driving_crashes": 251.0,
+      "roadway_departure_crashes": 781.0
+    },
+    {
+      "county_name": "UTAH",
+      "severe_crashes": 1979,
+      "fatal_crashes": 242.0,
+      "speed_related_crashes": 445.0,
+      "dui_crashes": 133.0,
+      "distracted_driving_crashes": 164.0,
+      "roadway_departure_crashes": 551.0
+    },
+    {
+      "county_name": "WEBER",
+      "severe_crashes": 1009,
+      "fatal_crashes": 164.0,
+      "speed_related_crashes": 171.0,
+      "dui_crashes": 106.0,
+      "distracted_driving_crashes": 58.0,
+      "roadway_departure_crashes": 264.0
+    },
+    {
+      "county_name": "DAVIS",
+      "severe_crashes": 855,
+      "fatal_crashes": 95.0,
+      "speed_related_crashes": 151.0,
+      "dui_crashes": 51.0,
+      "distracted_driving_crashes": 61.0,
+      "roadway_departure_crashes": 223.0
+    },
+    {
+      "county_name": "WASHINGTON",
+      "severe_crashes": 780,
+      "fatal_crashes": 106.0,
+      "speed_related_crashes": 176.0,
+      "dui_crashes": 61.0,
+      "distracted_driving_crashes": 82.0,
+      "roadway_departure_crashes": 276.0
+    },
+    {
+      "county_name": "TOOELE",
+      "severe_crashes": 454,
+      "fatal_crashes": 80.0,
+      "speed_related_crashes": 104.0,
+      "dui_crashes": 48.0,
+      "distracted_driving_crashes": 31.0,
+      "roadway_departure_crashes": 208.0
+    },
+    {
+      "county_name": "CACHE",
+      "severe_crashes": 446,
+      "fatal_crashes": 67.0,
+      "speed_related_crashes": 73.0,
+      "dui_crashes": 36.0,
+      "distracted_driving_crashes": 38.0,
+      "roadway_departure_crashes": 125.0
+    },
+    {
+      "county_name": "BOX ELDER",
+      "severe_crashes": 356,
+      "fatal_crashes": 68.0,
+      "speed_related_crashes": 85.0,
+      "dui_crashes": 37.0,
+      "distracted_driving_crashes": 34.0,
+      "roadway_departure_crashes": 177.0
+    },
+    {
+      "county_name": "IRON",
+      "severe_crashes": 349,
+      "fatal_crashes": 55.0,
+      "speed_related_crashes": 107.0,
+      "dui_crashes": 22.0,
+      "distracted_driving_crashes": 36.0,
+      "roadway_departure_crashes": 154.0
+    },
+    {
+      "county_name": "WASATCH",
+      "severe_crashes": 315,
+      "fatal_crashes": 53.0,
+      "speed_related_crashes": 93.0,
+      "dui_crashes": 37.0,
+      "distracted_driving_crashes": 19.0,
+      "roadway_departure_crashes": 146.0
+    },
+    {
+      "county_name": "SUMMIT",
+      "severe_crashes": 273,
+      "fatal_crashes": 36.0,
+      "speed_related_crashes": 76.0,
+      "dui_crashes": 23.0,
+      "distracted_driving_crashes": 27.0,
+      "roadway_departure_crashes": 132.0
+    },
+    {
+      "county_name": "MILLARD",
+      "severe_crashes": 153,
+      "fatal_crashes": 35.0,
+      "speed_related_crashes": 51.0,
+      "dui_crashes": 17.0,
+      "distracted_driving_crashes": 14.0,
+      "roadway_departure_crashes": 82.0
+    },
+    {
+      "county_name": "SEVIER",
+      "severe_crashes": 142,
+      "fatal_crashes": 29.0,
+      "speed_related_crashes": 34.0,
+      "dui_crashes": 18.0,
+      "distracted_driving_crashes": 15.0,
+      "roadway_departure_crashes": 93.0
+    },
+    {
+      "county_name": "UINTAH",
+      "severe_crashes": 141,
+      "fatal_crashes": 39.0,
+      "speed_related_crashes": 43.0,
+      "dui_crashes": 29.0,
+      "distracted_driving_crashes": 11.0,
+      "roadway_departure_crashes": 76.0
+    },
+    {
+      "county_name": "GRAND",
+      "severe_crashes": 140,
+      "fatal_crashes": 42.0,
+      "speed_related_crashes": 32.0,
+      "dui_crashes": 15.0,
+      "distracted_driving_crashes": 11.0,
+      "roadway_departure_crashes": 79.0
+    }
+  ],
+  "purpose": "Statewide context dataset for severe-crash exploration. This dataset is separate from the statistically supported priority-corridor shortlist."
+}

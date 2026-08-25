@@ -1,0 +1,64 @@
+name: Refresh UDOT SafeCorridor analytics
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Weekly Monday refresh. GitHub Actions cron uses UTC.
+    - cron: "17 10 * * 1"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run base UDOT pipeline
+        env:
+          UDOT_CRASH_MIN_YEAR: "2018"
+          UDOT_CRASH_MAX_YEAR: "2025"
+        run: python -m src.pipeline
+
+      - name: Screen candidate routes
+        run: python phase2a_screen.py
+
+      - name: Spatially reference crashes and build corridor bins
+        run: python phase2b_spatial.py
+
+      - name: Run statistical corridor validation
+        run: python phase2c_statistical.py
+
+      - name: Consolidate executive priority corridors
+        run: python phase2d_executive_corridors.py
+
+      - name: Build corridor driver analysis
+        run: python phase3_driver_analysis.py
+
+      - name: Build statewide explorer datasets
+        run: python phase3b_statewide_explorer.py
+
+      - name: Commit refreshed published outputs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/gold reports
+          if git diff --cached --quiet; then
+            echo "No published output changes."
+          else
+            git commit -m "data: refresh UDOT analytical outputs"
+            git push
+          fi

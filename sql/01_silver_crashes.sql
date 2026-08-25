@@ -1,0 +1,67 @@
+CREATE OR REPLACE TABLE silver_crashes AS
+WITH typed AS (
+    SELECT
+        TRY_CAST(CRASH_ID AS BIGINT) AS crash_id,
+        TRY_CAST(OBJECTID AS BIGINT) AS object_id,
+        TRY_CAST(SOURCE_YEAR AS INTEGER) AS crash_year,
+        CASE
+            WHEN TRY_CAST(CRASH_DATETIME AS BIGINT) IS NOT NULL
+            THEN epoch_ms(TRY_CAST(CRASH_DATETIME AS BIGINT))
+            ELSE NULL
+        END AS crash_timestamp,
+        UPPER(TRIM(CAST(COUNTY_NAME AS VARCHAR))) AS county_name,
+        TRIM(CAST(REGION_NAME AS VARCHAR)) AS region_name,
+        TRIM(CAST(MAIN_ROAD_NAME AS VARCHAR)) AS main_road_name,
+        TRIM(CAST(ROUTE AS VARCHAR)) AS route_raw,
+        CASE
+            WHEN regexp_extract(CAST(ROUTE AS VARCHAR), '([0-9]+)', 1) <> ''
+            THEN CAST(TRY_CAST(regexp_extract(CAST(ROUTE AS VARCHAR), '([0-9]+)', 1) AS INTEGER) AS VARCHAR)
+            ELSE NULL
+        END AS route_key,
+        TRY_CAST(START_ACCUM AS DOUBLE) AS milepoint,
+        TRIM(CAST(ROUTE_DIRECTION AS VARCHAR)) AS route_direction,
+        TRIM(CAST(ROADWAY_TYPE_CD AS VARCHAR)) AS roadway_type_cd,
+        TRIM(CAST(LOCATION_DESC AS VARCHAR)) AS location_desc,
+        TRIM(CAST(CRASH_SEVERITY_DESC AS VARCHAR)) AS severity,
+        TRIM(CAST(LIGHT_CONDITION_DESC AS VARCHAR)) AS light_condition,
+        TRIM(CAST(WEATHER_CONDITION_DESC AS VARCHAR)) AS weather_condition,
+        TRIM(CAST(MANNER_COLLISION_DESC AS VARCHAR)) AS collision_manner,
+        TRIM(CAST(ROADWAY_SURF_CONDITION_DESC AS VARCHAR)) AS surface_condition,
+        TRIM(CAST(ROADWAY_JUNCT_FEATURE_DESC AS VARCHAR)) AS junction_feature,
+        TRIM(CAST(ROAD_JURISDICTION_DESC AS VARCHAR)) AS road_jurisdiction,
+        TRIM(CAST(FUNCTIONAL_CLASS AS VARCHAR)) AS functional_class,
+        TRY_CAST(NUMBER_FATALITIES AS INTEGER) AS fatalities,
+        TRY_CAST(NUMBER_FOUR_INJURIES AS INTEGER) AS serious_injuries,
+        TRY_CAST(NUMBER_VEHICLES_INVOLVED AS INTEGER) AS vehicles_involved,
+        TRY_CAST(LATITUDE AS DOUBLE) AS latitude,
+        TRY_CAST(LONGITUDE AS DOUBLE) AS longitude,
+        CASE WHEN UPPER(TRIM(CAST(WORK_ZONE_RELATED_YNU AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS work_zone_flag,
+        CASE WHEN UPPER(TRIM(CAST(PEDESTRIAN_INVOLVED AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS pedestrian_flag,
+        CASE WHEN UPPER(TRIM(CAST(BICYCLIST_INVOLVED AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS bicyclist_flag,
+        CASE WHEN UPPER(TRIM(CAST(MOTORCYCLE_INVOLVED AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS motorcycle_flag,
+        CASE WHEN UPPER(TRIM(CAST(DUI AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS dui_flag,
+        CASE WHEN UPPER(TRIM(CAST(AGGRESSIVE_DRIVING AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS aggressive_driving_flag,
+        CASE WHEN UPPER(TRIM(CAST(DISTRACTED_DRIVING AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS distracted_driving_flag,
+        CASE WHEN UPPER(TRIM(CAST(DROWSY_DRIVING AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS drowsy_driving_flag,
+        CASE WHEN UPPER(TRIM(CAST(SPEED_RELATED AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS speed_related_flag,
+        CASE WHEN UPPER(TRIM(CAST(ROADWAY_DEPARTURE AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS roadway_departure_flag,
+        CASE WHEN UPPER(TRIM(CAST(OVERTURN_ROLLOVER AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS rollover_flag,
+        CASE WHEN UPPER(TRIM(CAST(COMMERCIAL_MOTOR_VEH_INVOLVED AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS commercial_vehicle_flag,
+        CASE WHEN UPPER(TRIM(CAST(TEENAGE_DRIVER_INVOLVED AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS teenage_driver_flag,
+        CASE WHEN UPPER(TRIM(CAST(OLDER_DRIVER_INVOLVED AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS older_driver_flag,
+        CASE WHEN UPPER(TRIM(CAST(SINGLE_VEHICLE AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS single_vehicle_flag,
+        CASE WHEN UPPER(TRIM(CAST(HIT_AND_RUN AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS hit_and_run_flag,
+        CASE WHEN UPPER(TRIM(CAST(DIVIDED_HIGHWAY AS VARCHAR))) IN ('Y','YES','1','TRUE') THEN 1 ELSE 0 END AS divided_highway_flag
+    FROM bronze_crashes
+),
+deduped AS (
+    SELECT *,
+        ROW_NUMBER() OVER (PARTITION BY crash_id ORDER BY object_id DESC) AS rn
+    FROM typed
+)
+SELECT
+    * EXCLUDE (rn),
+    CASE WHEN severity IN ('Fatal', 'Suspected Serious Injury') THEN 1 ELSE 0 END AS severe_crash_flag,
+    CASE WHEN severity = 'Fatal' THEN 1 ELSE 0 END AS fatal_crash_flag
+FROM deduped
+WHERE rn = 1;

@@ -1,0 +1,90 @@
+{
+  "status": "success",
+  "started_at_utc": "2026-08-25T17:10:43.991058+00:00",
+  "finished_at_utc": "2026-08-25T17:15:23.819528+00:00",
+  "duration_seconds": 279.82847,
+  "crash_rows": 449804,
+  "aadt_rows": 4574,
+  "quality": [
+    {
+      "crash_rows": 449804,
+      "eligible_for_aadt_match": 394595.0,
+      "crashes_evaluated": 449804,
+      "crashes_matched_to_aadt": 380839.0,
+      "matched_using_aadt_proxy": 17697.0,
+      "eligible_match_rate_pct": 96.51389399257467
+    }
+  ],
+  "top_screening_routes": [
+    {
+      "route_key": "3342",
+      "severe_crashes": 3.0,
+      "severe_crashes_per_100m_vmt": 320.9046410167669,
+      "observed_expected_ratio": 69.7418311343791,
+      "screening_band": "HIGH"
+    },
+    {
+      "route_key": "2245",
+      "severe_crashes": 4.0,
+      "severe_crashes_per_100m_vmt": 225.82090017315264,
+      "observed_expected_ratio": 49.07739270017791,
+      "screening_band": "HIGH"
+    },
+    {
+      "route_key": "2979",
+      "severe_crashes": 7.0,
+      "severe_crashes_per_100m_vmt": 217.17610182876433,
+      "observed_expected_ratio": 47.198628764527655,
+      "screening_band": "HIGH"
+    },
+    {
+      "route_key": "1470",
+      "severe_crashes": 4.0,
+      "severe_crashes_per_100m_vmt": 187.87497955132912,
+      "observed_expected_ratio": 40.83065005457218,
+      "screening_band": "HIGH"
+    },
+    {
+      "route_key": "2829",
+      "severe_crashes": 3.0,
+      "severe_crashes_per_100m_vmt": 152.53217132291456,
+      "observed_expected_ratio": 33.149638787577,
+      "screening_band": "HIGH"
+    },
+    {
+      "route_key": "124",
+      "severe_crashes": 4.0,
+      "severe_crashes_per_100m_vmt": 147.08689091085236,
+      "observed_expected_ratio": 31.966222350301035,
+      "screening_band": "HIGH"
+    },
+    {
+      "route_key": "2154",
+      "severe_crashes": 7.0,
+      "severe_crashes_per_100m_vmt": 137.5448171605626,
+      "observed_expected_ratio": 29.89245459781244,
+      "screening_band": "HIGH"
+    },
+    {
+      "route_key": "2866",
+      "severe_crashes": 3.0,
+      "severe_crashes_per_100m_vmt": 136.6280002225741,
+      "observed_expected_ratio": 29.6932038426107,
+      "screening_band": "HIGH"
+    },
+    {
+      "route_key": "2708",
+      "severe_crashes": 7.0,
+      "severe_crashes_per_100m_vmt": 130.3947518574268,
+      "observed_expected_ratio": 28.338539249654456,
+      "screening_band": "HIGH"
+    },
+    {
+      "route_key": "144",
+      "severe_crashes": 4.0,
+      "severe_crashes_per_100m_vmt": 121.01075240600328,
+      "observed_expected_ratio": 26.299125600064734,
+      "screening_band": "HIGH"
+    }
+  ]
+}
