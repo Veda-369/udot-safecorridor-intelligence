@@ -25,3 +25,21 @@ def test_dashboard_has_dynamic_ytd_monitor():
     assert "YTD Monitor" in app
     assert "current_year_crashes.parquet" in app
     assert "Rollover rule" in app
+
+
+def test_crash_layer_discovery_accepts_both_udot_name_orders():
+    import re
+
+    pattern = re.compile(
+        r"(?:Crash Locations\s+(\d{4})|(\d{4})\s+Crash Locations)",
+        re.IGNORECASE,
+    )
+
+    legacy = pattern.fullmatch("Crash Locations 2025")
+    current = pattern.fullmatch("2026 Crash Locations")
+
+    assert legacy is not None
+    assert int(legacy.group(1) or legacy.group(2)) == 2025
+
+    assert current is not None
+    assert int(current.group(1) or current.group(2)) == 2026
