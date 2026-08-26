@@ -61,7 +61,10 @@ CRASH_FIELDS = [
     "CURRENT_AS_OF_DATE",
 ]
 
-YEAR_PATTERN = re.compile(r"Crash Locations\s+(\d{4})", re.IGNORECASE)
+YEAR_PATTERN = re.compile(
+    r"(?:Crash Locations\s+(\d{4})|(\d{4})\s+Crash Locations)",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)

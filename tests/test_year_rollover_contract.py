@@ -28,12 +28,7 @@ def test_dashboard_has_dynamic_ytd_monitor():
 
 
 def test_crash_layer_name_pattern_supports_legacy_and_current_udot_formats():
-    import re
-
-    pattern = re.compile(
-        r"(?:Crash Locations\s+(\d{4})|(\d{4})\s+Crash Locations)",
-        re.IGNORECASE,
-    )
+    from src.ingestion.crashes import YEAR_PATTERN
 
     samples = {
         "Crash Locations 2018": 2018,
@@ -42,6 +37,6 @@ def test_crash_layer_name_pattern_supports_legacy_and_current_udot_formats():
     }
 
     for name, expected_year in samples.items():
-        match = pattern.fullmatch(name)
+        match = YEAR_PATTERN.fullmatch(name)
         assert match is not None, name
         assert int(match.group(1) or match.group(2)) == expected_year
