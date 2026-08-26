@@ -127,3 +127,12 @@ Current-year data remain explicitly labeled preliminary because recent records c
 - Current-year crash data are preliminary and may be incomplete near the reporting date.
 - The AADT source is currently a fixed 2024 publication and should be refreshed when a newer defensible exposure source is available.
 - Production roadway-safety decisions should use UDOT-approved engineering methods, roadway characteristics and formal safety-performance modeling.
+
+
+## Current-year monitoring and automatic rollover
+
+The current calendar year is treated as preliminary YTD data and is intentionally excluded from the completed-year O/E/FDR corridor model. ArcGIS `TimestampOffset` values are parsed safely and converted to `America/Denver` before date-based comparisons. `CURRENT_AS_OF_DATE` is used as the source-freshness signal when available.
+
+At calendar rollover, the completed crash year becomes eligible for the historical model automatically. Historical AADT exposure rows are generated dynamically: same-year AADT is preferred; when unavailable, the newest prior available AADT is used as an explicitly labeled proxy.
+
+Current-year same-period comparisons exclude invalid or undated crash timestamps and report those records separately as data-quality metrics.

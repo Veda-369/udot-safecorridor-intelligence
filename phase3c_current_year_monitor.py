@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import json
-import re
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import numpy as np
 import pandas as pd
@@ -26,6 +26,20 @@ OUT_REPORT = PATHS.current_year_json
 
 SEVERE_VALUES = {"Fatal", "Suspected Serious Injury"}
 TRUE_VALUES = {"Y", "YES", "1", "TRUE", "T"}
+UTAH_TZ = ZoneInfo("America/Denver")
+
+# Plausible epoch bounds. Values outside these ranges are treated as invalid
+# rather than passed to pandas where overflow may occur.
+MIN_EPOCH_SECONDS = 631152000      # 1990-01-01 UTC
+MAX_EPOCH_SECONDS = 7258118400     # 2200-01-01 UTC
+MIN_EPOCH_MILLISECONDS = MIN_EPOCH_SECONDS * 1000
+MAX_EPOCH_MILLISECONDS = MAX_EPOCH_SECONDS * 1000
+
+
+def _column(df: pd.DataFrame, name: str, default=None) -> pd.Series:
+    if name in df.columns:
+        return df[name]
+    return pd.Series(default, index=df.index, dtype="object")
 
 
 def _flag(series: pd.Series) -> pd.Series:
@@ -39,12 +53,80 @@ def _flag(series: pd.Series) -> pd.Series:
     )
 
 
-def _parse_datetime(series: pd.Series) -> pd.Series:
-    """Parse either ArcGIS epoch-ms values or ISO/timestamp-offset strings."""
-    numeric = pd.to_numeric(series, errors="coerce")
-    from_epoch = pd.to_datetime(numeric, unit="ms", errors="coerce", utc=True)
-    from_text = pd.to_datetime(series, errors="coerce", utc=True)
-    return from_epoch.fillna(from_text)
+def _parse_datetime(series: pd.Series | None) -> pd.Series:
+    """
+    Parse UDOT date values safely.
+
+    Supports:
+    - ArcGIS TimestampOffset / ISO-8601 strings
+    - epoch milliseconds
+    - epoch seconds
+    - null/invalid values
+
+    Returns timezone-aware UTC timestamps. Numeric values are range-checked
+    before conversion to prevent pandas/numpy overflow.
+    """
+    if series is None:
+        return pd.Series(dtype="datetime64[ns, UTC]")
+
+    s = pd.Series(series).copy()
+    result = pd.Series(pd.NaT, index=s.index, dtype="datetime64[ns, UTC]")
+
+    numeric = pd.to_numeric(s, errors="coerce")
+    numeric_mask = numeric.notna()
+
+    # Parse non-numeric values as ISO/timestamp-offset text.
+    text_mask = ~numeric_mask & s.notna()
+    if text_mask.any():
+        result.loc[text_mask] = pd.to_datetime(
+            s.loc[text_mask],
+            errors="coerce",
+            utc=True,
+            format="mixed",
+        )
+
+    # Guarded epoch-ms parsing.
+    ms_mask = (
+        numeric_mask
+        & numeric.between(
+            MIN_EPOCH_MILLISECONDS,
+            MAX_EPOCH_MILLISECONDS,
+            inclusive="both",
+        )
+    )
+    if ms_mask.any():
+        result.loc[ms_mask] = pd.to_datetime(
+            numeric.loc[ms_mask],
+            unit="ms",
+            errors="coerce",
+            utc=True,
+        )
+
+    # Guarded epoch-seconds parsing.
+    sec_mask = (
+        numeric_mask
+        & ~ms_mask
+        & numeric.between(
+            MIN_EPOCH_SECONDS,
+            MAX_EPOCH_SECONDS,
+            inclusive="both",
+        )
+    )
+    if sec_mask.any():
+        result.loc[sec_mask] = pd.to_datetime(
+            numeric.loc[sec_mask],
+            unit="s",
+            errors="coerce",
+            utc=True,
+        )
+
+    return result
+
+
+def _to_utah_local(series: pd.Series) -> pd.Series:
+    if series.empty:
+        return series
+    return series.dt.tz_convert(UTAH_TZ)
 
 
 def _route_num(series: pd.Series) -> pd.Series:
@@ -60,6 +142,7 @@ def _normalize_current(raw: pd.DataFrame) -> pd.DataFrame:
                 "crash_datetime",
                 "crash_date",
                 "crash_year",
+                "current_as_of_datetime",
                 "county_name",
                 "route_num",
                 "latitude",
@@ -71,29 +154,64 @@ def _normalize_current(raw: pd.DataFrame) -> pd.DataFrame:
                 "dui_flag",
                 "distracted_driving_flag",
                 "roadway_departure_flag",
+                "valid_crash_date_flag",
+                "monitor_year_date_flag",
             ]
         )
 
     df = pd.DataFrame(index=raw.index)
-    df["crash_id"] = pd.to_numeric(raw.get("CRASH_ID"), errors="coerce").astype("Int64")
-    df["crash_datetime"] = _parse_datetime(raw.get("CRASH_DATETIME"))
+    df["_source_order"] = np.arange(len(raw), dtype="int64")
+    df["crash_id"] = pd.to_numeric(_column(raw, "CRASH_ID"), errors="coerce").astype("Int64")
+
+    crash_utc = _parse_datetime(_column(raw, "CRASH_DATETIME"))
+    asof_utc = _parse_datetime(_column(raw, "CURRENT_AS_OF_DATE"))
+
+    df["crash_datetime"] = _to_utah_local(crash_utc)
+    df["current_as_of_datetime"] = _to_utah_local(asof_utc)
     df["crash_date"] = df["crash_datetime"].dt.date
     df["crash_year"] = CURRENT_MONITOR_YEAR
-    df["county_name"] = raw.get("COUNTY_NAME").fillna("Unknown").astype(str).str.strip().str.upper()
-    df["route_num"] = _route_num(raw.get("ROUTE"))
-    df["latitude"] = pd.to_numeric(raw.get("LATITUDE"), errors="coerce")
-    df["longitude"] = pd.to_numeric(raw.get("LONGITUDE"), errors="coerce")
-    df["severity"] = raw.get("CRASH_SEVERITY_DESC").fillna("").astype(str).str.strip()
+
+    df["county_name"] = (
+        _column(raw, "COUNTY_NAME", "Unknown")
+        .fillna("Unknown")
+        .astype(str)
+        .str.strip()
+        .str.upper()
+    )
+    df["route_num"] = _route_num(_column(raw, "ROUTE"))
+    df["latitude"] = pd.to_numeric(_column(raw, "LATITUDE"), errors="coerce")
+    df["longitude"] = pd.to_numeric(_column(raw, "LONGITUDE"), errors="coerce")
+    df["severity"] = (
+        _column(raw, "CRASH_SEVERITY_DESC")
+        .fillna("")
+        .astype(str)
+        .str.strip()
+    )
     df["severe_crash_flag"] = df["severity"].isin(SEVERE_VALUES).astype("int8")
     df["fatal_crash_flag"] = (df["severity"] == "Fatal").astype("int8")
-    df["speed_related_flag"] = _flag(raw.get("SPEED_RELATED"))
-    df["dui_flag"] = _flag(raw.get("DUI"))
-    df["distracted_driving_flag"] = _flag(raw.get("DISTRACTED_DRIVING"))
-    df["roadway_departure_flag"] = _flag(raw.get("ROADWAY_DEPARTURE"))
+    df["speed_related_flag"] = _flag(_column(raw, "SPEED_RELATED"))
+    df["dui_flag"] = _flag(_column(raw, "DUI"))
+    df["distracted_driving_flag"] = _flag(_column(raw, "DISTRACTED_DRIVING"))
+    df["roadway_departure_flag"] = _flag(_column(raw, "ROADWAY_DEPARTURE"))
 
-    # Remove duplicate crash IDs, preferring the latest row in source order.
-    df = df.drop_duplicates(subset=["crash_id"], keep="last")
-    return df.reset_index(drop=True)
+    df["valid_crash_date_flag"] = df["crash_datetime"].notna().astype("int8")
+    df["monitor_year_date_flag"] = (
+        df["crash_datetime"].notna()
+        & (df["crash_datetime"].dt.year == CURRENT_MONITOR_YEAR)
+    ).astype("int8")
+
+    # Deduplicate only non-null IDs. Multiple rows with null crash IDs must not
+    # collapse into one synthetic duplicate group.
+    with_id = (
+        df[df["crash_id"].notna()]
+        .sort_values("_source_order")
+        .drop_duplicates(subset=["crash_id"], keep="last")
+    )
+    without_id = df[df["crash_id"].isna()]
+    df = pd.concat([with_id, without_id], ignore_index=True)
+    df = df.sort_values("_source_order").drop(columns=["_source_order"]).reset_index(drop=True)
+
+    return df
 
 
 def _within_month_day(ts: pd.Series, month: int, day: int) -> pd.Series:
@@ -120,9 +238,13 @@ def _safe_pct_delta(current: pd.Series, baseline: pd.Series) -> pd.Series:
     )
 
 
+def _write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+
+
 def _empty_outputs(status: str, message: str) -> None:
     ensure_directories()
-
     empty_crashes = _normalize_current(pd.DataFrame())
     empty_county = pd.DataFrame(
         columns=[
@@ -170,18 +292,31 @@ def _empty_outputs(status: str, message: str) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         df.to_parquet(path, index=False)
 
-    OUT_REPORT.write_text(
-        json.dumps(
-            {
-                "status": status,
-                "generated_at_utc": datetime.now(timezone.utc).isoformat(),
-                "current_year": CURRENT_MONITOR_YEAR,
-                "message": message,
-            },
-            indent=2,
-        ),
-        encoding="utf-8",
+    _write_json(
+        OUT_REPORT,
+        {
+            "status": status,
+            "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+            "current_year": CURRENT_MONITOR_YEAR,
+            "message": message,
+        },
     )
+
+
+def _resolve_cutoff(current: pd.DataFrame) -> tuple[datetime.date, datetime.date | None]:
+    today_utah = datetime.now(UTAH_TZ).date()
+
+    asof = current["current_as_of_datetime"].dropna()
+    if not asof.empty:
+        data_as_of = asof.max().date()
+    else:
+        valid_crash_dates = current["crash_datetime"].dropna()
+        data_as_of = valid_crash_dates.max().date() if not valid_crash_dates.empty else None
+
+    if data_as_of is None:
+        return today_utah, None
+
+    return min(today_utah, data_as_of), data_as_of
 
 
 def main() -> None:
@@ -206,25 +341,23 @@ def main() -> None:
         prefer_current_service=True,
         allow_empty=True,
     )
-    current = _normalize_current(raw)
+    current_all = _normalize_current(raw)
 
-    if current.empty:
+    if current_all.empty:
         _empty_outputs(
             "current_layer_empty",
             f"The {CURRENT_MONITOR_YEAR} crash layer exists but returned no records.",
         )
         return
 
-    valid_dates = current["crash_datetime"].dropna()
-    if valid_dates.empty:
-        cutoff = datetime.now(timezone.utc).date()
-    else:
-        cutoff = valid_dates.max().date()
+    cutoff, data_as_of = _resolve_cutoff(current_all)
 
-    # Keep only records through the observed data cutoff for consistent YTD comparisons.
-    current = current[
-        current["crash_datetime"].isna()
-        | (current["crash_datetime"].dt.date <= cutoff)
+    # Same-period YTD outputs use only records with a valid Utah-local crash date
+    # inside the monitor year. Invalid/undated rows remain visible in QA metrics.
+    current = current_all[
+        (current_all["valid_crash_date_flag"] == 1)
+        & (current_all["monitor_year_date_flag"] == 1)
+        & (current_all["crash_datetime"].dt.date <= cutoff)
     ].copy()
 
     if not PATHS.silver_crashes.exists():
@@ -235,8 +368,15 @@ def main() -> None:
 
     hist = pd.read_parquet(PATHS.silver_crashes)
     hist["crash_year"] = pd.to_numeric(hist["crash_year"], errors="coerce").astype("Int64")
-    hist["crash_datetime"] = pd.to_datetime(hist["crash_timestamp"], errors="coerce", utc=True)
-    hist["county_name"] = hist["county_name"].fillna("Unknown").astype(str).str.strip().str.upper()
+
+    # Historical epoch timestamps represent UTC instants. Convert them to Utah
+    # local time before month/day same-period comparisons.
+    hist_utc = pd.to_datetime(hist["crash_timestamp"], errors="coerce", utc=True)
+    hist["crash_datetime"] = hist_utc.dt.tz_convert(UTAH_TZ)
+
+    hist["county_name"] = (
+        hist["county_name"].fillna("Unknown").astype(str).str.strip().str.upper()
+    )
     hist["route_num"] = pd.to_numeric(hist["route_key"], errors="coerce").astype("Int64")
 
     available_hist_years = sorted(
@@ -254,9 +394,6 @@ def main() -> None:
 
     current.to_parquet(OUT_CRASHES, index=False)
 
-    # ------------------------------------------------------------------
-    # Statewide same-period comparison
-    # ------------------------------------------------------------------
     comparison_rows = [_year_counts(hist_ytd, year) for year in comparison_years]
     current_counts = {
         "year": CURRENT_MONITOR_YEAR,
@@ -269,13 +406,10 @@ def main() -> None:
     compare["is_current_year"] = (compare["year"] == CURRENT_MONITOR_YEAR).astype("int8")
     compare.to_parquet(OUT_COMPARE, index=False)
 
-    # ------------------------------------------------------------------
-    # County comparison
-    # ------------------------------------------------------------------
     curr_county = (
         current.groupby("county_name", dropna=False)
         .agg(
-            current_crashes=("crash_id", "count"),
+            current_crashes=("severe_crash_flag", "size"),
             current_severe_crashes=("severe_crash_flag", "sum"),
             current_fatal_crashes=("fatal_crash_flag", "sum"),
         )
@@ -291,14 +425,17 @@ def main() -> None:
             )
             .reset_index()
         )
-        # Reindex year/county combinations so a zero-crash prior year is included
-        # in the average rather than silently dropped.
-        all_counties = sorted(set(curr_county["county_name"]) | set(hist_county_year["county_name"]))
+        all_counties = sorted(
+            set(curr_county["county_name"]) | set(hist_county_year["county_name"])
+        )
         grid = pd.MultiIndex.from_product(
-            [comparison_years, all_counties], names=["crash_year", "county_name"]
+            [comparison_years, all_counties],
+            names=["crash_year", "county_name"],
         ).to_frame(index=False)
         hist_county_year = grid.merge(
-            hist_county_year, on=["crash_year", "county_name"], how="left"
+            hist_county_year,
+            on=["crash_year", "county_name"],
+            how="left",
         ).fillna({"severe_crashes": 0, "fatal_crashes": 0})
         hist_county_avg = (
             hist_county_year.groupby("county_name")
@@ -310,24 +447,26 @@ def main() -> None:
         )
     else:
         hist_county_avg = pd.DataFrame(
-            columns=["county_name", "historical_avg_severe_crashes", "historical_avg_fatal_crashes"]
+            columns=[
+                "county_name",
+                "historical_avg_severe_crashes",
+                "historical_avg_fatal_crashes",
+            ]
         )
 
     county = curr_county.merge(hist_county_avg, on="county_name", how="left")
     county["severe_vs_history_pct"] = _safe_pct_delta(
-        county["current_severe_crashes"], county["historical_avg_severe_crashes"]
+        county["current_severe_crashes"],
+        county["historical_avg_severe_crashes"],
     )
     county = county.sort_values("current_severe_crashes", ascending=False)
     county.to_parquet(OUT_COUNTY, index=False)
 
-    # ------------------------------------------------------------------
-    # Route comparison
-    # ------------------------------------------------------------------
     curr_route = (
         current[current["route_num"].notna()]
         .groupby("route_num")
         .agg(
-            current_crashes=("crash_id", "count"),
+            current_crashes=("severe_crash_flag", "size"),
             current_severe_crashes=("severe_crash_flag", "sum"),
             current_fatal_crashes=("fatal_crash_flag", "sum"),
         )
@@ -349,10 +488,13 @@ def main() -> None:
             | set(hist_route_year["route_num"].dropna().astype(int).tolist())
         )
         grid = pd.MultiIndex.from_product(
-            [comparison_years, routes], names=["crash_year", "route_num"]
+            [comparison_years, routes],
+            names=["crash_year", "route_num"],
         ).to_frame(index=False)
         hist_route_year = grid.merge(
-            hist_route_year, on=["crash_year", "route_num"], how="left"
+            hist_route_year,
+            on=["crash_year", "route_num"],
+            how="left",
         ).fillna({"severe_crashes": 0, "fatal_crashes": 0})
         hist_route_avg = (
             hist_route_year.groupby("route_num")
@@ -364,22 +506,23 @@ def main() -> None:
         )
     else:
         hist_route_avg = pd.DataFrame(
-            columns=["route_num", "historical_avg_severe_crashes", "historical_avg_fatal_crashes"]
+            columns=[
+                "route_num",
+                "historical_avg_severe_crashes",
+                "historical_avg_fatal_crashes",
+            ]
         )
 
     route = curr_route.merge(hist_route_avg, on="route_num", how="left")
     route["severe_vs_history_pct"] = _safe_pct_delta(
-        route["current_severe_crashes"], route["historical_avg_severe_crashes"]
+        route["current_severe_crashes"],
+        route["historical_avg_severe_crashes"],
     )
     route = route.sort_values("current_severe_crashes", ascending=False)
     route.to_parquet(OUT_ROUTE, index=False)
 
-    # ------------------------------------------------------------------
-    # Monthly severe/fatal trend versus same-period historical average
-    # ------------------------------------------------------------------
     current_monthly = (
-        current[current["crash_datetime"].notna()]
-        .assign(month=lambda x: x["crash_datetime"].dt.month)
+        current.assign(month=current["crash_datetime"].dt.month)
         .groupby("month")
         .agg(
             current_severe_crashes=("severe_crash_flag", "sum"),
@@ -403,7 +546,9 @@ def main() -> None:
             names=["crash_year", "month"],
         ).to_frame(index=False)
         hist_month_year = month_grid.merge(
-            hist_month_year, on=["crash_year", "month"], how="left"
+            hist_month_year,
+            on=["crash_year", "month"],
+            how="left",
         ).fillna({"severe_crashes": 0, "fatal_crashes": 0})
         hist_month_avg = (
             hist_month_year.groupby("month")
@@ -415,12 +560,18 @@ def main() -> None:
         )
     else:
         hist_month_avg = pd.DataFrame(
-            columns=["month", "historical_avg_severe_crashes", "historical_avg_fatal_crashes"]
+            columns=[
+                "month",
+                "historical_avg_severe_crashes",
+                "historical_avg_fatal_crashes",
+            ]
         )
 
     monthly = pd.DataFrame({"month": range(1, cutoff.month + 1)})
     monthly = monthly.merge(current_monthly, on="month", how="left").merge(
-        hist_month_avg, on="month", how="left"
+        hist_month_avg,
+        on="month",
+        how="left",
     )
     monthly = monthly.fillna(0)
     monthly["month_name"] = monthly["month"].map(
@@ -428,14 +579,34 @@ def main() -> None:
     )
     monthly.to_parquet(OUT_MONTHLY, index=False)
 
-    historical_avg = compare.loc[compare["is_current_year"] == 0, [
-        "crashes", "severe_crashes", "fatal_crashes"
-    ]].mean(numeric_only=True)
+    historical_avg = compare.loc[
+        compare["is_current_year"] == 0,
+        ["crashes", "severe_crashes", "fatal_crashes"],
+    ].mean(numeric_only=True)
+
+    valid_ids = current_all["crash_id"].dropna()
+    quality = {
+        "source_records": int(len(raw)),
+        "normalized_records": int(len(current_all)),
+        "dated_monitor_year_records": int(len(current)),
+        "missing_crash_id_records": int(current_all["crash_id"].isna().sum()),
+        "invalid_or_missing_crash_datetime_records": int(
+            (current_all["valid_crash_date_flag"] == 0).sum()
+        ),
+        "crash_dates_outside_monitor_year_records": int(
+            (
+                (current_all["valid_crash_date_flag"] == 1)
+                & (current_all["monitor_year_date_flag"] == 0)
+            ).sum()
+        ),
+        "duplicate_non_null_ids_after_normalization": int(valid_ids.duplicated().sum()),
+    }
 
     report = {
         "status": "success",
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "current_year": CURRENT_MONITOR_YEAR,
+        "data_as_of_date": data_as_of.isoformat() if data_as_of else None,
         "data_through_date": cutoff.isoformat(),
         "comparison_years": comparison_years,
         "source_layer": {
@@ -445,6 +616,7 @@ def main() -> None:
             "layer_id": layers[0].layer_id,
         },
         "summary": current_counts,
+        "quality": quality,
         "historical_same_period_average": {
             key: (round(float(value), 2) if pd.notna(value) else None)
             for key, value in historical_avg.items()
@@ -452,17 +624,19 @@ def main() -> None:
         "notes": [
             "Current-year data are preliminary year-to-date observations.",
             "Recent crashes can be delayed or revised as UDOT completes entry and review.",
+            "TimestampOffset values are normalized to America/Denver before date-based comparisons.",
+            "Undated/current-year-invalid records are excluded from same-period YTD comparisons and reported in quality metrics.",
             "The current year is excluded from the historical O/E/FDR prioritization model until the calendar year is complete.",
-            "At year rollover, the completed year automatically becomes eligible for the historical model and the new calendar year becomes the YTD monitor year.",
         ],
     }
-    OUT_REPORT.write_text(json.dumps(report, indent=2, default=str), encoding="utf-8")
+    _write_json(OUT_REPORT, report)
 
     print("\nPHASE 3C CURRENT-YEAR MONITOR COMPLETE")
     print("======================================")
     print(f"Current monitor year: {CURRENT_MONITOR_YEAR}")
-    print(f"Data through: {cutoff.isoformat()}")
-    print(f"Crash records: {len(current):,}")
+    print(f"Data as of: {report['data_as_of_date']}")
+    print(f"Comparison cutoff: {cutoff.isoformat()}")
+    print(f"YTD dated crash records: {len(current):,}")
     print(f"Severe crashes: {int(current['severe_crash_flag'].sum()):,}")
     print(f"Fatal crashes: {int(current['fatal_crash_flag'].sum()):,}")
     print(f"Comparison years: {comparison_years}")

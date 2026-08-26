@@ -9,6 +9,7 @@ numpy>=1.26,<3
 pyarrow>=17,<24
 duckdb>=1.1,<2
 scipy>=1.13,<2
+tzdata>=2025.2,<2027
 
 # API ingestion
 requests>=2.32,<3
@@ -17,3 +18,6 @@ requests>=2.32,<3
 geopandas>=1.0,<2
 shapely>=2.0,<3
 pyogrio>=0.10,<1
+
+# CI / regression tests
+pytest>=8,<10

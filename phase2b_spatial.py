@@ -71,30 +71,64 @@ def fetch_udot_routes(refresh: bool = False) -> gpd.GeoDataFrame:
         print(f"Using cached UDOT route geometry: {ROUTES_CACHE.relative_to(ROOT)}")
         return gpd.read_file(ROUTES_CACHE)
 
-    print("Downloading official UDOT route geometry (small reference dataset)...")
-    params = {
-        "where": "ROUTE_TYPE='M' AND CARTO_CODE IN ('1','2','3')",
-        "outFields": (
-            "OBJECTID,ROUTE_ID,ROUTE_DIRECTION,ROUTE_TYPE,"
-            "BEG_MILEAGE,END_MILEAGE,CARTO_CODE,"
-            "ROUTE_ALIAS_COMMON,ROUTE_ALIAS_STD_DIR,ROUTE_DESC,SUB_ROUTE_ID"
-        ),
-        "returnGeometry": "true",
-        "outSR": "4326",
-        "f": "geojson",
-        "resultRecordCount": "10000",
-    }
-    response = requests.get(ROUTES_URL, params=params, timeout=120)
-    response.raise_for_status()
-    payload = response.json()
+    print("Downloading official UDOT route geometry (paginated reference dataset)...")
+    where = "ROUTE_TYPE='M' AND CARTO_CODE IN ('1','2','3')"
+    out_fields = (
+        "OBJECTID,ROUTE_ID,ROUTE_DIRECTION,ROUTE_TYPE,"
+        "BEG_MILEAGE,END_MILEAGE,CARTO_CODE,"
+        "ROUTE_ALIAS_COMMON,ROUTE_ALIAS_STD_DIR,ROUTE_DESC,SUB_ROUTE_ID"
+    )
 
-    if "features" not in payload or not payload["features"]:
+    # Ask ArcGIS for the complete object-id set first. This avoids silently
+    # truncating route geometry if the service transfer limit changes.
+    id_response = requests.get(
+        ROUTES_URL,
+        params={
+            "where": where,
+            "returnIdsOnly": "true",
+            "f": "json",
+        },
+        timeout=120,
+    )
+    id_response.raise_for_status()
+    id_payload = id_response.json()
+    object_ids = sorted(id_payload.get("objectIds") or [])
+    if not object_ids:
         raise RuntimeError(
-            "UDOT Routes service returned no features. "
-            f"Response keys: {list(payload.keys())}"
+            "UDOT Routes service returned no object IDs for the route filter."
         )
 
-    routes = gpd.GeoDataFrame.from_features(payload["features"], crs="EPSG:4326")
+    features: list[dict] = []
+    batch_size = 1000
+    for start in range(0, len(object_ids), batch_size):
+        batch = object_ids[start : start + batch_size]
+        response = requests.get(
+            ROUTES_URL,
+            params={
+                "objectIds": ",".join(str(x) for x in batch),
+                "outFields": out_fields,
+                "returnGeometry": "true",
+                "outSR": "4326",
+                "f": "geojson",
+            },
+            timeout=120,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        batch_features = payload.get("features") or []
+        if len(batch_features) != len(batch):
+            raise RuntimeError(
+                "UDOT Routes pagination returned an incomplete batch: "
+                f"requested={len(batch)}, received={len(batch_features)}"
+            )
+        features.extend(batch_features)
+
+    if len(features) != len(object_ids):
+        raise RuntimeError(
+            "UDOT Routes geometry count does not match the discovered object-id count."
+        )
+
+    routes = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     routes["route_num"] = routes.apply(parse_route_number, axis=1)
     routes = routes[routes["route_num"].between(1, 999, inclusive="both")].copy()
     routes["route_num"] = routes["route_num"].astype(int)

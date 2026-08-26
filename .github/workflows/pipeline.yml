@@ -9,10 +9,14 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: udot-analytics-refresh
+  cancel-in-progress: false
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
 
     steps:
       - name: Check out repository
@@ -26,6 +30,9 @@ jobs:
 
       - name: Install dependencies
         run: pip install -r requirements.txt
+
+      - name: Run regression tests
+        run: python -m pytest -q
 
       - name: Run completed-year historical pipeline
         env:
@@ -50,19 +57,42 @@ jobs:
       - name: Build historical statewide explorer datasets
         run: python phase3b_statewide_explorer.py
 
-      - name: Build dynamic current-year YTD monitor
-        run: python phase3c_current_year_monitor.py
-
-      - name: Commit refreshed published outputs
+      # Publish valid historical outputs before the optional/current-year monitor.
+      # If the YTD monitor later fails, the historical refresh is still preserved.
+      - name: Commit refreshed historical outputs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add data/gold reports
 
           if git diff --cached --quiet; then
-            echo "No published output changes."
+            echo "No historical published-output changes."
           else
-            git commit -m "data: refresh UDOT analytical outputs"
+            git commit -m "data: refresh historical UDOT analytical outputs"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Build dynamic current-year YTD monitor
+        run: python phase3c_current_year_monitor.py
+
+      - name: Commit refreshed current-year outputs
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add \
+            data/gold/current_year_crashes.parquet \
+            data/gold/current_year_county_summary.parquet \
+            data/gold/current_year_route_summary.parquet \
+            data/gold/current_year_ytd_comparison.parquet \
+            data/gold/current_year_monthly_trend.parquet \
+            reports/phase3c_current_year_monitor.json
+
+          if git diff --cached --quiet; then
+            echo "No current-year published-output changes."
+          else
+            git commit -m "data: refresh current-year UDOT monitor"
             git pull --rebase origin main
             git push origin HEAD:main
           fi

@@ -1,43 +1,31 @@
+-- Dynamic AADT exposure source is prepared in Python by
+-- src.ingestion.aadt.build_aadt_analysis_frame().
+--
+-- For each historical analysis year the builder chooses:
+--   1) same-year AADT when available;
+--   2) otherwise the newest available AADT year <= analysis year.
+--
+-- This SQL deliberately avoids hard-coding calendar years so completed crash
+-- years can roll into the historical model without an annual SQL edit.
+
 CREATE OR REPLACE TABLE silver_aadt_long AS
-WITH base AS (
-    SELECT
-        TRY_CAST(OBJECTID AS BIGINT) AS segment_object_id,
-        TRIM(CAST(Station AS VARCHAR)) AS station,
-        TRIM(CAST(RouteID AS VARCHAR)) AS route_id_raw,
-        CASE
-            WHEN regexp_extract(CAST(RouteID AS VARCHAR), '([0-9]+)', 1) <> ''
-            THEN CAST(TRY_CAST(regexp_extract(CAST(RouteID AS VARCHAR), '([0-9]+)', 1) AS INTEGER) AS VARCHAR)
-            ELSE NULL
-        END AS route_key,
-        TRY_CAST(BeginPoint AS DOUBLE) AS begin_point,
-        TRY_CAST(EndPoint AS DOUBLE) AS end_point,
-        TRY_CAST(SectionLength AS DOUBLE) AS section_length,
-        TRIM(CAST(DESC_ AS VARCHAR)) AS segment_description,
-        TRY_CAST(AADT2018 AS DOUBLE) AS aadt2018,
-        TRY_CAST(AADT2019 AS DOUBLE) AS aadt2019,
-        TRY_CAST(AADT2020 AS DOUBLE) AS aadt2020,
-        TRY_CAST(AADT2021 AS DOUBLE) AS aadt2021,
-        TRY_CAST(AADT2022 AS DOUBLE) AS aadt2022,
-        TRY_CAST(AADT2023 AS DOUBLE) AS aadt2023,
-        TRY_CAST(AADT2024 AS DOUBLE) AS aadt2024
-    FROM bronze_aadt
-)
-SELECT segment_object_id, station, route_id_raw, route_key, begin_point, end_point, section_length, segment_description, 2018 AS analysis_year, 2018 AS aadt_year, aadt2018 AS aadt FROM base
-UNION ALL
-SELECT segment_object_id, station, route_id_raw, route_key, begin_point, end_point, section_length, segment_description, 2019, 2019, aadt2019 FROM base
-UNION ALL
-SELECT segment_object_id, station, route_id_raw, route_key, begin_point, end_point, section_length, segment_description, 2020, 2020, aadt2020 FROM base
-UNION ALL
-SELECT segment_object_id, station, route_id_raw, route_key, begin_point, end_point, section_length, segment_description, 2021, 2021, aadt2021 FROM base
-UNION ALL
-SELECT segment_object_id, station, route_id_raw, route_key, begin_point, end_point, section_length, segment_description, 2022, 2022, aadt2022 FROM base
-UNION ALL
-SELECT segment_object_id, station, route_id_raw, route_key, begin_point, end_point, section_length, segment_description, 2023, 2023, aadt2023 FROM base
-UNION ALL
-SELECT segment_object_id, station, route_id_raw, route_key, begin_point, end_point, section_length, segment_description, 2024, 2024, aadt2024 FROM base
-UNION ALL
--- 2025 crashes use the latest currently published unrounded AADT field as an explicit proxy.
-SELECT segment_object_id, station, route_id_raw, route_key, begin_point, end_point, section_length, segment_description, 2025, 2024, aadt2024 FROM base;
+SELECT
+    TRY_CAST(segment_object_id AS BIGINT) AS segment_object_id,
+    TRIM(CAST(station AS VARCHAR)) AS station,
+    TRIM(CAST(route_id_raw AS VARCHAR)) AS route_id_raw,
+    CASE
+        WHEN TRY_CAST(route_key AS INTEGER) IS NOT NULL
+        THEN CAST(TRY_CAST(route_key AS INTEGER) AS VARCHAR)
+        ELSE NULL
+    END AS route_key,
+    TRY_CAST(begin_point AS DOUBLE) AS begin_point,
+    TRY_CAST(end_point AS DOUBLE) AS end_point,
+    TRY_CAST(section_length AS DOUBLE) AS section_length,
+    TRIM(CAST(segment_description AS VARCHAR)) AS segment_description,
+    TRY_CAST(analysis_year AS INTEGER) AS analysis_year,
+    TRY_CAST(aadt_year AS INTEGER) AS aadt_year,
+    TRY_CAST(aadt AS DOUBLE) AS aadt
+FROM aadt_analysis_source;
 
 CREATE OR REPLACE TABLE silver_aadt_analysis AS
 SELECT

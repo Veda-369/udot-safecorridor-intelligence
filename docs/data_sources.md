@@ -74,3 +74,8 @@ Potential use:
 - Traffic events / alerts
 
 This API requires a developer key and is deliberately excluded from the zero-secret core pipeline.
+
+
+## Current-year crash feed
+
+Newer annual/current-year crash layers are discovered from UDOT's public `Utah_Crash_Locations` FeatureServer. The current feed exposes timestamp-offset fields including `CRASH_DATETIME` and `CURRENT_AS_OF_DATE`; the monitor uses `CURRENT_AS_OF_DATE` for source freshness and converts timestamps to Utah local time before calendar comparisons.

@@ -1,5 +1,7 @@
 # UDOT SafeCorridor Intelligence
 
+**Live dashboard:** https://udot-safecorridor.streamlit.app/
+
 **Exposure-Adjusted Roadway Safety Prioritization & Decision-Support System**
 
 Independent analytical proof-of-concept using publicly available Utah Department of Transportation (UDOT) transportation data.
@@ -350,7 +352,9 @@ Calendar year N
 
 When January 1 arrives, year `N` automatically becomes eligible for the historical pipeline and year `N+1` becomes the YTD monitor. If UDOT has not yet published the new annual layer, the historical pipeline continues normally and the YTD monitor reports that the layer is not yet available.
 
-The historical extractor preserves the validated legacy source where available and falls back to UDOT's nightly FeatureServer for newer annual layers.
+Historical exposure years are also generated dynamically. For each analysis year, the pipeline uses same-year AADT when available; otherwise it explicitly uses the newest available prior AADT year as a proxy and records the mapping in the pipeline report. This prevents a newly completed crash year from silently dropping out of the exposure-adjusted model.
+
+The historical extractor preserves the validated legacy source where available and falls back to UDOT's nightly FeatureServer for newer annual layers. Current-year TimestampOffset values are normalized to `America/Denver`, and source freshness is tracked separately from crash occurrence dates.
 
 ## Automation
 

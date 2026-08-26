@@ -59,4 +59,11 @@ def validate_bronze(crashes: pd.DataFrame, aadt: pd.DataFrame) -> list[dict]:
             ]
         )
 
-    return [asdict(check) for check in checks]
+    records = []
+    for check in checks:
+        record = asdict(check)
+        record["passed"] = bool(record["passed"])
+        if hasattr(record["value"], "item"):
+            record["value"] = record["value"].item()
+        records.append(record)
+    return records
