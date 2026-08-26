@@ -61,10 +61,7 @@ CRASH_FIELDS = [
     "CURRENT_AS_OF_DATE",
 ]
 
-YEAR_PATTERN = re.compile(
-    r"(?:Crash Locations\\s+(\\d{4})|(\\d{4})\\s+Crash Locations)",
-    re.IGNORECASE,
-)
+YEAR_PATTERN = re.compile(r"Crash Locations\s+(\d{4})", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -139,8 +136,6 @@ def _discover_service_layers(
         match = YEAR_PATTERN.fullmatch(name.strip())
         if not match:
             continue
-        # UDOT currently uses both "Crash Locations 2025" and
-        # "2026 Crash Locations" naming conventions across its public services.
         year = int(match.group(1) or match.group(2))
         if min_year <= year <= max_year:
             found[year] = CrashLayer(

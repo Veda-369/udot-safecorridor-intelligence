@@ -27,7 +27,7 @@ def test_dashboard_has_dynamic_ytd_monitor():
     assert "Rollover rule" in app
 
 
-def test_crash_layer_discovery_accepts_both_udot_name_orders():
+def test_crash_layer_name_pattern_supports_legacy_and_current_udot_formats():
     import re
 
     pattern = re.compile(
@@ -35,11 +35,13 @@ def test_crash_layer_discovery_accepts_both_udot_name_orders():
         re.IGNORECASE,
     )
 
-    legacy = pattern.fullmatch("Crash Locations 2025")
-    current = pattern.fullmatch("2026 Crash Locations")
+    samples = {
+        "Crash Locations 2018": 2018,
+        "Crash Locations 2025": 2025,
+        "2026 Crash Locations": 2026,
+    }
 
-    assert legacy is not None
-    assert int(legacy.group(1) or legacy.group(2)) == 2025
-
-    assert current is not None
-    assert int(current.group(1) or current.group(2)) == 2026
+    for name, expected_year in samples.items():
+        match = pattern.fullmatch(name)
+        assert match is not None, name
+        assert int(match.group(1) or match.group(2)) == expected_year
