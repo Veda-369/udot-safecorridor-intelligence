@@ -1,63 +1,129 @@
 # Methodology
 
-## 1. Problem framing
+## 1. Decision question
 
-Raw crash totals can prioritize high-volume roads simply because more vehicles use them. The MVP therefore adds an exposure denominator based on Annual Average Daily Traffic (AADT) and segment length.
+The project asks:
 
-## 2. Severe crash definition
+> Which Utah roadway corridors show disproportionately high fatal/serious-injury crash burden after accounting for traffic exposure, and which corridors merit further investigation?
 
-For v0.1:
+Raw crash totals alone can over-prioritize roads simply because they carry more traffic, so the historical screening model includes traffic exposure and uncertainty.
+
+## 2. Historical versus current-year separation
+
+The pipeline deliberately maintains two time tracks:
+
+```text
+Calendar year N
+├── Historical model: 2018 through N-1 (completed years)
+└── Current-year monitor: N YTD (preliminary)
+```
+
+The historical model excludes the incomplete current year. On calendar rollover, the completed year becomes eligible for historical modeling automatically and the new calendar year becomes the YTD monitor year.
+
+If UDOT has not yet published the new annual current-year layer, the YTD monitor reports that condition and waits; the historical pipeline continues normally.
+
+## 3. Severe crash definition
+
+A crash is classified as severe when severity is:
 
 - Fatal
 - Suspected Serious Injury
 
-are classified as severe crashes.
+## 4. Data-quality validation
 
-## 3. Cross-source matching
+Validation includes:
 
-Crashes are matched to AADT road sections using:
+- missing crash identifiers,
+- duplicate crash identifiers,
+- missing severity,
+- plausible Utah coordinates,
+- route normalization,
+- AADT completeness,
+- crash/AADT cross-source matching, and
+- spatial route-match quality.
 
-1. A normalized numeric route key extracted from UDOT `ROUTE` and AADT `RouteID`.
-2. Crash `START_ACCUM` / milepoint falling between AADT `BeginPoint` and `EndPoint`.
+## 5. Crash-to-route spatial referencing
 
-If multiple candidates exist, the segment whose midpoint is closest to the crash milepoint is selected. The pipeline publishes an eligible match-rate diagnostic. Low matching quality should trigger route-key refinement before findings are presented.
+An earlier prototype tested the crash-source accumulated mileage field as a corridor location. Validation showed geographically impossible clustering across multiple counties for the same apparent milepoint, so that method was discarded.
 
-## 4. Exposure
+The production approach instead:
+
+1. Loads official UDOT route geometry.
+2. Normalizes numeric route identifiers.
+3. Matches crash coordinates to the corresponding route geometry.
+4. Keeps route matches within the configured spatial tolerance.
+5. Projects the crash point onto the official route line.
+6. Derives an analytical route milepoint using UDOT begin/end mileage and normalized line position.
+
+This spatial LRS workflow is the basis for five-mile corridor construction.
+
+## 6. Traffic exposure
 
 For each AADT section/year:
 
 `Annual VMT = AADT × SectionLength × 365.25`
 
-For 2025 crash screening, AADT2024 is used as an explicit proxy because the current source layer exposes annual AADT through 2024. The resulting records carry `aadt_proxy_flag = 1`.
+Severe crash rates are expressed per 100 million vehicle miles traveled.
 
-## 5. Exposure-adjusted rate
+The project currently uses the UDOT AADT 2024 Unrounded publication, including explicit proxy handling where the crash year is newer than the available AADT year.
 
-`Severe Crash Rate = Severe Crashes × 100,000,000 / Annual VMT`
+## 7. Five-mile corridor screening
 
-This yields severe crashes per 100 million vehicle miles traveled.
+Spatially referenced crashes are aggregated into five-mile route bins. Corridors must meet minimum evidence/exposure thresholds before statistical prioritization.
 
-## 6. v0.1 observed/expected screen
+Expected severe-crash burden is estimated from comparable exposure peers using a leave-one-route/corridor-out screening baseline.
 
-The statewide baseline rate is:
+For each corridor:
 
-`statewide severe crashes / statewide VMT`
+`O/E = Observed severe crashes / Expected severe crashes`
 
-For each route:
+`Excess severe = Observed severe crashes - Expected severe crashes`
 
-`Expected Severe = statewide rate × route VMT`
+## 8. Statistical uncertainty
 
-`O/E = observed severe crashes / expected severe crashes`
+The screening layer uses:
 
-This is a transparent screening statistic, **not a causal crash-frequency model**.
+- one-sided Poisson exceedance p-values,
+- exact 95% Poisson confidence intervals for the O/E ratio, and
+- Benjamini-Hochberg false-discovery-rate correction.
 
-## 7. Planned statistical model
+The peer expected count is estimated from the observational dataset and treated as fixed for this screening uncertainty calculation. This is a prioritization POC, not an official crash-frequency safety-performance function.
 
-The next version should estimate expected severe-crash counts using a count model such as Poisson or negative binomial with a log(VMT) offset and roadway covariates. Candidate features include functional class, lane count, median, shoulder, roadway geometry and other defensible attributes.
+## 9. Executive corridor consolidation
 
-Model validation should include:
+Adjacent statistically supported five-mile bins on the same route are merged into longer executive corridor clusters. This is a presentation/decision-support step; the underlying five-mile statistical results remain the evidence base.
 
-- Overdispersion assessment
-- Residual diagnostics
-- Holdout or temporal validation where appropriate
-- Confidence/prediction intervals
-- Sensitivity to sparse-event segments
+## 10. Corridor characteristic analysis
+
+For supported executive corridors, severe crashes are compared with the statewide severe-crash baseline for:
+
+- speed-related crashes,
+- DUI,
+- distracted driving, and
+- roadway departure.
+
+These are descriptive overrepresentation measures, not causal effects.
+
+## 11. Current-year YTD monitor
+
+The YTD monitor automatically discovers the current calendar-year UDOT layer, preferring the nightly FeatureServer. It produces:
+
+- current-year crash, severe-crash and fatal-crash counts,
+- severe/fatal crash map records,
+- county and route summaries,
+- same-period comparisons with up to five prior completed years, and
+- monthly severe/fatal trends versus the same-period historical average.
+
+The comparison cutoff uses the latest crash date represented in the current-year data. Prior completed years are truncated to the same month/day so a partial year is not compared with full-year totals.
+
+Current-year data remain explicitly labeled preliminary because recent records can be delayed or revised.
+
+## 12. Interpretation limitations
+
+- This is an independent portfolio proof-of-concept, not an official UDOT safety study.
+- Observational data do not establish causality.
+- Five-mile bins and merged clusters are analytical constructs, not official project boundaries.
+- Peer expected counts are estimated from the same observational dataset.
+- Current-year crash data are preliminary and may be incomplete near the reporting date.
+- The AADT source is currently a fixed 2024 publication and should be refreshed when a newer defensible exposure source is available.
+- Production roadway-safety decisions should use UDOT-approved engineering methods, roadway characteristics and formal safety-performance modeling.

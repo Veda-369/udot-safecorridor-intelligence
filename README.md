@@ -243,7 +243,7 @@ The production app is:
 dashboard/app.py
 ```
 
-The dashboard contains four analytical views:
+The dashboard contains five analytical views:
 
 ### 1. Statewide Explorer
 
@@ -260,7 +260,25 @@ Includes:
 - time trend, and
 - county ranking.
 
-### 2. Priority Corridors
+### 2. Current-Year YTD Monitor
+
+Answers:
+
+> **What is happening in the preliminary current calendar year, compared with the same period in prior completed years?**
+
+Includes:
+
+- automatic detection of the current UDOT annual crash layer,
+- statewide YTD crash / severe / fatal KPIs,
+- same-period prior-year comparisons,
+- county → route cascading filters,
+- current-year severe/fatal crash map,
+- monthly severe-crash comparison, and
+- county YTD context.
+
+The current calendar year is intentionally excluded from the historical O/E/FDR model until the year is complete. At calendar rollover, the completed year automatically becomes historical and the new calendar year becomes the YTD monitor.
+
+### 3. Priority Corridors
 
 Answers:
 
@@ -274,7 +292,7 @@ Includes:
 - corridor map, and
 - synchronized county / route filters.
 
-### 3. Why This Corridor?
+### 4. Why This Corridor?
 
 Answers:
 
@@ -289,7 +307,7 @@ Compares corridor severe crashes with the statewide severe-crash baseline for:
 
 These comparisons are descriptive associations and should not be interpreted as causal effects.
 
-### 4. Methodology
+### 5. Methodology
 
 Documents:
 
@@ -320,6 +338,20 @@ Important information is not communicated through color alone. Charts and maps a
 
 ---
 
+## Automatic calendar-year rollover
+
+The crash-year logic is dynamic rather than hard-coded:
+
+```text
+Calendar year N
+├── Historical model: 2018 through N-1 (completed years)
+└── Current monitor: N YTD (preliminary)
+```
+
+When January 1 arrives, year `N` automatically becomes eligible for the historical pipeline and year `N+1` becomes the YTD monitor. If UDOT has not yet published the new annual layer, the historical pipeline continues normally and the YTD monitor reports that the layer is not yet available.
+
+The historical extractor preserves the validated legacy source where available and falls back to UDOT's nightly FeatureServer for newer annual layers.
+
 ## Automation
 
 The GitHub Actions workflow is defined in:
@@ -344,6 +376,8 @@ phase2d_executive_corridors.py
 phase3_driver_analysis.py
     ↓
 phase3b_statewide_explorer.py
+    ↓
+phase3c_current_year_monitor.py
 ```
 
 Published Gold datasets and quality/statistical reports are committed when outputs change.
@@ -364,6 +398,7 @@ python -m venv .venv
 .venv\Scripts\python.exe phase2d_executive_corridors.py
 .venv\Scripts\python.exe phase3_driver_analysis.py
 .venv\Scripts\python.exe phase3b_statewide_explorer.py
+.venv\Scripts\python.exe phase3c_current_year_monitor.py
 .venv\Scripts\python.exe -m streamlit run dashboard\app.py
 ```
 
@@ -380,6 +415,7 @@ python phase2c_statistical.py
 python phase2d_executive_corridors.py
 python phase3_driver_analysis.py
 python phase3b_statewide_explorer.py
+python phase3c_current_year_monitor.py
 python -m streamlit run dashboard/app.py
 ```
 
@@ -404,7 +440,9 @@ phase2d_executive_corridors.py
                           adjacent-bin executive consolidation
 phase3_driver_analysis.py  corridor characteristic analysis
 phase3b_statewide_explorer.py
-                          statewide dashboard dataset generation
+                          historical statewide dashboard dataset generation
+phase3c_current_year_monitor.py
+                          dynamic current-year YTD monitoring + rollover
 tests/                    static pipeline checks
 ```
 

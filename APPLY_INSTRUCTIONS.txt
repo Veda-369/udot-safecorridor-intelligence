@@ -1,0 +1,47 @@
+UDOT SafeCorridor — Automatic Year Rollover Upgrade
+====================================================
+
+Copy/extract the CONTENTS of this patch into the ROOT of your existing
+udot-safecorridor-intelligence repository and allow Windows to replace files.
+
+Files replaced/added:
+- src/config.py
+- src/pipeline.py
+- src/ingestion/crashes.py
+- sql/01_silver_crashes.sql
+- dashboard/app.py
+- .github/workflows/pipeline.yml
+- README.md
+- docs/data_sources.md
+- docs/methodology.md
+- tests/test_year_rollover_contract.py
+- phase3c_current_year_monitor.py   (NEW)
+
+Behavior:
+- Historical pipeline automatically uses 2018 through current_year - 1.
+- Current calendar year is pulled separately as preliminary YTD data.
+- At Jan 1 rollover, the completed year moves into historical automatically.
+- The new calendar year becomes the current-year monitor automatically.
+- If UDOT has not published the new annual layer yet, the monitor writes an
+  unavailable status instead of breaking the historical pipeline.
+
+After copying files, from the repository root run:
+
+  git pull
+  git status
+  git add .
+  git commit -m "feat: add automatic crash-year rollover and YTD monitor"
+  git push
+
+Then in GitHub Actions manually run:
+  Refresh UDOT SafeCorridor analytics
+
+The workflow will generate these new published outputs:
+- data/gold/current_year_crashes.parquet
+- data/gold/current_year_county_summary.parquet
+- data/gold/current_year_route_summary.parquet
+- data/gold/current_year_ytd_comparison.parquet
+- data/gold/current_year_monthly_trend.parquet
+- reports/phase3c_current_year_monitor.json
+
+Streamlit Community Cloud should redeploy automatically after the GitHub push.

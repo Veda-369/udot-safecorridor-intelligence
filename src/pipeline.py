@@ -9,7 +9,15 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-from src.config import PATHS, ROOT, SQL_DIR, ensure_directories
+from src.config import (
+    CRASH_MAX_YEAR,
+    CRASH_MIN_YEAR,
+    CURRENT_MONITOR_YEAR,
+    PATHS,
+    ROOT,
+    SQL_DIR,
+    ensure_directories,
+)
 from src.ingestion.aadt import extract_aadt
 from src.ingestion.crashes import extract_crashes
 from src.quality.checks import validate_bronze
@@ -49,7 +57,12 @@ def run() -> None:
     ensure_directories()
     started = datetime.now(timezone.utc)
 
-    LOGGER.info("Extracting crashes")
+    LOGGER.info(
+        "Extracting completed-year historical crashes: %s-%s; current monitor year=%s",
+        CRASH_MIN_YEAR,
+        CRASH_MAX_YEAR,
+        CURRENT_MONITOR_YEAR,
+    )
     crashes = extract_crashes()
     LOGGER.info("Extracting AADT")
     aadt = extract_aadt()
@@ -100,6 +113,9 @@ def run() -> None:
             "started_at_utc": started.isoformat(),
             "finished_at_utc": finished.isoformat(),
             "duration_seconds": (finished - started).total_seconds(),
+            "historical_crash_year_min": CRASH_MIN_YEAR,
+            "historical_crash_year_max": CRASH_MAX_YEAR,
+            "current_monitor_year": CURRENT_MONITOR_YEAR,
             "crash_rows": len(crashes),
             "aadt_rows": len(aadt),
             "quality": quality,

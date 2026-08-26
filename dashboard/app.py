@@ -19,6 +19,12 @@ DRIVERS = ROOT / "data" / "gold" / "corridor_driver_analysis_v1.parquet"
 PHASE2B_REPORT = ROOT / "reports" / "phase2b_spatial.json"
 PHASE2C_REPORT = ROOT / "reports" / "phase2c_statistical_validation.json"
 PHASE3B_REPORT = ROOT / "reports" / "phase3b_statewide_explorer.json"
+CURRENT_YEAR_CRASHES = ROOT / "data" / "gold" / "current_year_crashes.parquet"
+CURRENT_YEAR_COUNTY = ROOT / "data" / "gold" / "current_year_county_summary.parquet"
+CURRENT_YEAR_ROUTE = ROOT / "data" / "gold" / "current_year_route_summary.parquet"
+CURRENT_YEAR_COMPARE = ROOT / "data" / "gold" / "current_year_ytd_comparison.parquet"
+CURRENT_YEAR_MONTHLY = ROOT / "data" / "gold" / "current_year_monthly_trend.parquet"
+PHASE3C_REPORT = ROOT / "reports" / "phase3c_current_year_monitor.json"
 
 st.set_page_config(
     page_title="UDOT SafeCorridor Intelligence",
@@ -231,12 +237,52 @@ phase3b = (
     if PHASE3B_REPORT.exists()
     else {}
 )
+phase3c = (
+    json.loads(PHASE3C_REPORT.read_text(encoding="utf-8"))
+    if PHASE3C_REPORT.exists()
+    else {}
+)
+current_year_crashes = (
+    pd.read_parquet(CURRENT_YEAR_CRASHES)
+    if CURRENT_YEAR_CRASHES.exists()
+    else pd.DataFrame()
+)
+current_year_county = (
+    pd.read_parquet(CURRENT_YEAR_COUNTY)
+    if CURRENT_YEAR_COUNTY.exists()
+    else pd.DataFrame()
+)
+current_year_route = (
+    pd.read_parquet(CURRENT_YEAR_ROUTE)
+    if CURRENT_YEAR_ROUTE.exists()
+    else pd.DataFrame()
+)
+current_year_compare = (
+    pd.read_parquet(CURRENT_YEAR_COMPARE)
+    if CURRENT_YEAR_COMPARE.exists()
+    else pd.DataFrame()
+)
+current_year_monthly = (
+    pd.read_parquet(CURRENT_YEAR_MONTHLY)
+    if CURRENT_YEAR_MONTHLY.exists()
+    else pd.DataFrame()
+)
 
 # Friendly route labels for statewide explorer.
 statewide["route_label"] = statewide["route_num"].apply(
     lambda x: f"Route {int(x)}" if pd.notna(x) else "Unknown"
 )
 statewide["county_name"] = statewide["county_name"].fillna("Unknown")
+
+if not current_year_crashes.empty:
+    current_year_crashes["county_name"] = (
+        current_year_crashes["county_name"].fillna("Unknown")
+    )
+    current_year_crashes["route_label"] = current_year_crashes["route_num"].apply(
+        lambda x: f"Route {int(x)}" if pd.notna(x) else "Unknown"
+    )
+    if "crash_date" in current_year_crashes.columns:
+        current_year_crashes["crash_date"] = current_year_crashes["crash_date"].astype(str)
 
 # -------------------------------------------------------------------
 # Helper functions
@@ -351,12 +397,17 @@ def auto_view(df, default_lat=39.32, default_lon=-111.67, default_zoom=5.3):
 # -------------------------------------------------------------------
 # Tabs
 # -------------------------------------------------------------------
-tab_statewide, tab_priority, tab_why, tab_method = st.tabs(
+monitor_year = phase3c.get("current_year")
+if monitor_year is None:
+    monitor_year = pd.Timestamp.utcnow().year
+
+tab_statewide, tab_current, tab_priority, tab_why, tab_method = st.tabs(
     [
-        "1. Statewide Explorer",
-        "2. Priority Corridors",
-        "3. Why This Corridor?",
-        "4. Methodology",
+        "1. Historical Statewide",
+        f"2. {monitor_year} YTD Monitor",
+        "3. Priority Corridors",
+        "4. Why This Corridor?",
+        "5. Methodology",
     ]
 )
 
@@ -364,10 +415,18 @@ tab_statewide, tab_priority, tab_why, tab_method = st.tabs(
 # TAB 1 — STATEWIDE EXPLORER
 # ===================================================================
 with tab_statewide:
-    st.header("What is happening across Utah?")
+    historical_years = sorted(
+        int(y) for y in statewide["crash_year"].dropna().unique().tolist()
+    )
+    historical_window = (
+        f"{historical_years[0]}–{historical_years[-1]}"
+        if historical_years else "completed years"
+    )
+    st.header("Historical statewide safety picture")
     st.write(
-        "This view shows **all severe crashes in the statewide analysis dataset**, "
-        "not only corridors that passed statistical screening."
+        f"This view shows severe crashes from **{historical_window} completed years**. "
+        "The partial calendar year is intentionally kept out of the historical "
+        "priority model and appears in the YTD Monitor instead."
     )
 
     severe_total = len(statewide)
@@ -617,7 +676,313 @@ with tab_statewide:
         )
 
 # ===================================================================
-# TAB 2 — PRIORITY CORRIDORS
+# TAB 2 — CURRENT-YEAR MONITOR
+# ===================================================================
+with tab_current:
+    current_status = phase3c.get("status", "not_generated")
+    current_year = int(phase3c.get("current_year", monitor_year))
+
+    st.header(f"{current_year} year-to-date safety monitor")
+    st.write(
+        "This view is intentionally separate from the historical corridor model. "
+        "It tracks the **partial current year** and compares it with the same "
+        "calendar period in completed prior years."
+    )
+
+    if current_status != "success" or current_year_crashes.empty:
+        message = phase3c.get(
+            "message",
+            f"The {current_year} current-year monitor has not been generated yet.",
+        )
+        st.info(message)
+        st.caption(
+            "When UDOT publishes the current-year layer, the scheduled pipeline "
+            "will detect it automatically. No code or year edit is required."
+        )
+    else:
+        data_through = phase3c.get("data_through_date", "—")
+        comparison_years = phase3c.get("comparison_years", [])
+        summary = phase3c.get("summary", {})
+        hist_avg = phase3c.get("historical_same_period_average", {})
+
+        current_total = int(summary.get("crashes", len(current_year_crashes)))
+        current_severe = int(
+            summary.get(
+                "severe_crashes",
+                current_year_crashes["severe_crash_flag"].sum(),
+            )
+        )
+        current_fatal = int(
+            summary.get(
+                "fatal_crashes",
+                current_year_crashes["fatal_crash_flag"].sum(),
+            )
+        )
+        avg_severe = hist_avg.get("severe_crashes")
+        avg_fatal = hist_avg.get("fatal_crashes")
+
+        delta_severe = None
+        if avg_severe not in (None, 0):
+            delta_severe = (current_severe - float(avg_severe)) / float(avg_severe) * 100
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("YTD crashes", f"{current_total:,}")
+        c2.metric(
+            "YTD severe crashes",
+            f"{current_severe:,}",
+            delta=(f"{delta_severe:+.1f}% vs prior-period avg" if delta_severe is not None else None),
+        )
+        c3.metric("YTD fatal crashes", f"{current_fatal:,}")
+        c4.metric("Data through", str(data_through))
+
+        if comparison_years:
+            st.caption(
+                "Same-period baseline years: "
+                + ", ".join(str(y) for y in comparison_years)
+                + "."
+            )
+
+        st.warning(
+            f"{current_year} data are **preliminary YTD observations**. Recent "
+            "crashes can be delayed, corrected, or revised as UDOT completes "
+            "entry and investigation. These records are not included in the "
+            "historical O/E/FDR prioritization model until the year is complete."
+        )
+
+        st.subheader("Explore current-year crashes")
+        cy_counties = sorted(
+            current_year_crashes["county_name"].dropna().unique().tolist()
+        )
+
+        cf1, cf2 = st.columns(2)
+        with cf1:
+            cy_selected_counties = filtered_multiselect(
+                "Counties",
+                cy_counties,
+                "cy_counties",
+                help_text="Select one or more counties, or leave blank for statewide.",
+                placeholder="All counties",
+            )
+
+        cy_route_scope = current_year_crashes
+        if cy_selected_counties:
+            cy_route_scope = cy_route_scope[
+                cy_route_scope["county_name"].isin(cy_selected_counties)
+            ]
+        cy_routes = sorted(
+            cy_route_scope["route_label"].dropna().unique().tolist()
+        )
+
+        if "cy_routes" in st.session_state:
+            valid_cy_routes = [
+                r for r in st.session_state["cy_routes"] if r in cy_routes
+            ]
+            if valid_cy_routes != st.session_state["cy_routes"]:
+                st.session_state["cy_routes"] = valid_cy_routes
+
+        with cf2:
+            cy_selected_routes = filtered_multiselect(
+                "Routes",
+                cy_routes,
+                "cy_routes",
+                help_text="Route choices cascade from the selected county scope.",
+                placeholder="All available routes",
+            )
+
+        cy_filtered = current_year_crashes.copy()
+        if cy_selected_counties:
+            cy_filtered = cy_filtered[
+                cy_filtered["county_name"].isin(cy_selected_counties)
+            ]
+        if cy_selected_routes:
+            cy_filtered = cy_filtered[
+                cy_filtered["route_label"].isin(cy_selected_routes)
+            ]
+
+        if cy_filtered.empty:
+            st.warning("No current-year crashes match those filters.")
+        else:
+            yf1, yf2, yf3 = st.columns(3)
+            yf1.metric("Filtered crashes", f"{len(cy_filtered):,}")
+            yf2.metric(
+                "Filtered severe crashes",
+                f"{int(cy_filtered['severe_crash_flag'].sum()):,}",
+            )
+            yf3.metric(
+                "Filtered fatal crashes",
+                f"{int(cy_filtered['fatal_crash_flag'].sum()):,}",
+            )
+
+            st.subheader(f"{current_year} YTD severe-crash map")
+            cy_map = cy_filtered[
+                cy_filtered["severe_crash_flag"] == 1
+            ].rename(columns={"latitude": "lat", "longitude": "lon"})
+            cy_map = cy_map.dropna(subset=["lat", "lon"]).copy()
+
+            if cy_map.empty:
+                st.info("No severe crashes with usable coordinates match the filters.")
+            else:
+                cy_fatal = cy_map[cy_map["fatal_crash_flag"] == 1]
+                cy_serious = cy_map[cy_map["fatal_crash_flag"] != 1]
+                cy_layers = []
+
+                if not cy_serious.empty:
+                    cy_layers.append(
+                        pdk.Layer(
+                            "ScatterplotLayer",
+                            data=cy_serious,
+                            get_position="[lon, lat]",
+                            get_radius=500,
+                            radius_min_pixels=3,
+                            radius_max_pixels=8,
+                            get_fill_color=MAP_SEVERE,
+                            pickable=True,
+                            auto_highlight=True,
+                        )
+                    )
+                if not cy_fatal.empty:
+                    cy_layers.append(
+                        pdk.Layer(
+                            "ScatterplotLayer",
+                            data=cy_fatal,
+                            get_position="[lon, lat]",
+                            get_radius=700,
+                            radius_min_pixels=4,
+                            radius_max_pixels=10,
+                            get_fill_color=MAP_FATAL,
+                            get_line_color=[255, 255, 255, 235],
+                            line_width_min_pixels=1,
+                            stroked=True,
+                            pickable=True,
+                            auto_highlight=True,
+                        )
+                    )
+
+                cy_deck = pdk.Deck(
+                    map_style=(
+                        "https://basemaps.cartocdn.com/"
+                        "gl/positron-gl-style/style.json"
+                    ),
+                    initial_view_state=auto_view(cy_map),
+                    layers=cy_layers,
+                    tooltip={
+                        "html": (
+                            "<b>{county_name} County</b><br/>"
+                            "Route: {route_label}<br/>"
+                            "Severity: {severity}<br/>"
+                            "Crash date: {crash_date}"
+                        )
+                    },
+                )
+                st.pydeck_chart(cy_deck, use_container_width=True)
+
+        if not current_year_compare.empty:
+            st.subheader("Same-period comparison")
+            comparison_plot = current_year_compare.copy()
+            comparison_plot["Period"] = comparison_plot["year"].astype(str)
+            comparison_plot["Series"] = comparison_plot["is_current_year"].map(
+                {1: f"{current_year} YTD", 0: "Prior same-period year"}
+            )
+
+            bars = (
+                alt.Chart(comparison_plot)
+                .mark_bar()
+                .encode(
+                    x=alt.X("Period:N", title="Year"),
+                    y=alt.Y("severe_crashes:Q", title="Severe crashes through same cutoff"),
+                    color=alt.Color(
+                        "Series:N",
+                        title=None,
+                        scale=alt.Scale(
+                            domain=["Prior same-period year", f"{current_year} YTD"],
+                            range=[UTAH_GOLD, UTAH_NAVY],
+                        ),
+                    ),
+                    tooltip=[
+                        alt.Tooltip("year:O", title="Year"),
+                        alt.Tooltip("crashes:Q", title="All crashes", format=",.0f"),
+                        alt.Tooltip("severe_crashes:Q", title="Severe", format=",.0f"),
+                        alt.Tooltip("fatal_crashes:Q", title="Fatal", format=",.0f"),
+                    ],
+                )
+            )
+            labels = (
+                alt.Chart(comparison_plot)
+                .mark_text(dy=-5, color=UTAH_NAVY)
+                .encode(
+                    x=alt.X("Period:N"),
+                    y=alt.Y("severe_crashes:Q"),
+                    text=alt.Text("severe_crashes:Q", format=",.0f"),
+                )
+            )
+            st.altair_chart(bars + labels, use_container_width=True)
+
+        if not current_year_monthly.empty:
+            st.subheader("Monthly severe-crash pattern")
+            monthly_long = current_year_monthly[
+                ["month", "month_name", "current_severe_crashes", "historical_avg_severe_crashes"]
+            ].melt(
+                id_vars=["month", "month_name"],
+                var_name="Series",
+                value_name="Severe crashes",
+            )
+            monthly_long["Series"] = monthly_long["Series"].map(
+                {
+                    "current_severe_crashes": f"{current_year} YTD",
+                    "historical_avg_severe_crashes": "Prior same-period average",
+                }
+            )
+            line = (
+                alt.Chart(monthly_long)
+                .mark_line(point=True, strokeWidth=3)
+                .encode(
+                    x=alt.X("month_name:N", sort=list(current_year_monthly["month_name"]), title="Month"),
+                    y=alt.Y("Severe crashes:Q"),
+                    color=alt.Color(
+                        "Series:N",
+                        title=None,
+                        scale=alt.Scale(
+                            domain=[f"{current_year} YTD", "Prior same-period average"],
+                            range=[UTAH_NAVY, UTAH_GOLD],
+                        ),
+                    ),
+                    tooltip=[
+                        alt.Tooltip("month_name:N", title="Month"),
+                        alt.Tooltip("Series:N"),
+                        alt.Tooltip("Severe crashes:Q", format=".1f"),
+                    ],
+                )
+            )
+            st.altair_chart(line, use_container_width=True)
+
+        if not current_year_county.empty:
+            st.subheader("County YTD context")
+            county_view = current_year_county.copy()
+            county_view = county_view.sort_values(
+                "current_severe_crashes", ascending=False
+            ).head(15)
+            county_table = pd.DataFrame(
+                {
+                    "County": county_view["county_name"],
+                    f"{current_year} YTD severe": county_view["current_severe_crashes"].astype(int),
+                    "Prior same-period avg": county_view["historical_avg_severe_crashes"].round(1),
+                    "Change vs avg": county_view["severe_vs_history_pct"].map(
+                        lambda x: f"{x:+.1f}%" if pd.notna(x) else "—"
+                    ),
+                    f"{current_year} YTD fatal": county_view["current_fatal_crashes"].astype(int),
+                }
+            )
+            st.dataframe(county_table, hide_index=True, use_container_width=True)
+
+        st.caption(
+            "Rollover rule: completed years automatically move into the historical "
+            "analysis on January 1; the new calendar year becomes the YTD monitor. "
+            "If UDOT has not yet published the new annual layer, the monitor waits "
+            "and begins automatically when the layer appears."
+        )
+
+# ===================================================================
+# TAB 3 — PRIORITY CORRIDORS
 # ===================================================================
 with tab_priority:
     st.header("Where is severe-crash burden disproportionately elevated?")
@@ -845,7 +1210,7 @@ with tab_priority:
         )
 
 # ===================================================================
-# TAB 3 — WHY THIS CORRIDOR
+# TAB 4 — WHY THIS CORRIDOR
 # ===================================================================
 with tab_why:
     st.header("Why does a priority corridor stand out?")
@@ -1129,7 +1494,7 @@ with tab_why:
     )
 
 # ===================================================================
-# TAB 4 — METHODOLOGY
+# TAB 5 — METHODOLOGY
 # ===================================================================
 with tab_method:
     st.header("Methodology and governance")
@@ -1195,6 +1560,17 @@ with tab_method:
 
 **8. Diagnose**
 - Compare corridor crash characteristics with statewide severe-crash shares
+"""
+    )
+
+    st.subheader("Automatic year rollover")
+    st.markdown(
+        f"""
+- **Historical model:** completed calendar years only.
+- **Current-year monitor:** {monitor_year} YTD/preliminary data.
+- On January 1, the completed year becomes eligible for historical modeling automatically.
+- The new calendar year becomes the YTD monitor automatically.
+- If the new UDOT annual layer is not published yet, the monitor waits without failing the historical pipeline.
 """
     )
 
