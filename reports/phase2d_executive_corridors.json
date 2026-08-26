@@ -1,6 +1,6 @@
 {
   "status": "success",
-  "generated_at_utc": "2026-08-25T20:34:51.127440+00:00",
+  "generated_at_utc": "2026-08-26T01:01:53.552427+00:00",
   "method": {
     "purpose": "Consolidate adjacent statistically supported 5-mile bins into human-readable executive corridor clusters.",
     "important_note": "This is a presentation consolidation step. The underlying Phase 2C bin-level tests remain the analytical evidence base.",
