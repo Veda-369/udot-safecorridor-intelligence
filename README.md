@@ -352,7 +352,7 @@ Calendar year N
 
 When January 1 arrives, year `N` automatically becomes eligible for the historical pipeline and year `N+1` becomes the YTD monitor. If UDOT has not yet published the new annual layer, the historical pipeline continues normally and the YTD monitor reports that the layer is not yet available.
 
-Historical exposure years are also generated dynamically. For each analysis year, the pipeline uses same-year AADT when available; otherwise it explicitly uses the newest available prior AADT year as a proxy and records the mapping in the pipeline report. This prevents a newly completed crash year from silently dropping out of the exposure-adjusted model.
+Historical exposure years are also generated dynamically. For each analysis year, the pipeline uses same-year AADT when that year exists in the configured UDOT AADT publication; otherwise it explicitly uses the newest available prior AADT year as a proxy and records the mapping in the pipeline report. This prevents a newly completed crash year from silently dropping out of the exposure-adjusted model. The configured exposure publication is currently UDOT AADT 2024 Unrounded; discovering an entirely new future AADT publication URL remains a separate maintenance task.
 
 The historical extractor preserves the validated legacy source where available and falls back to UDOT's nightly FeatureServer for newer annual layers. Current-year TimestampOffset values are normalized to `America/Denver`, and source freshness is tracked separately from crash occurrence dates.
 

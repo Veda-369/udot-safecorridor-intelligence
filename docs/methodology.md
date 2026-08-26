@@ -6,7 +6,7 @@ The project asks:
 
 > Which Utah roadway corridors show disproportionately high fatal/serious-injury crash burden after accounting for traffic exposure, and which corridors merit further investigation?
 
-Raw crash totals alone can over-prioritize roads simply because they carry more traffic, so the historical screening model includes traffic exposure and uncertainty.
+Raw crash totals alone can over-prioritize roads simply because they carry more traffic, so the historical screening model includes traffic exposure and statistical uncertainty.
 
 ## 2. Historical versus current-year separation
 
@@ -18,9 +18,7 @@ Calendar year N
 └── Current-year monitor: N YTD (preliminary)
 ```
 
-The historical model excludes the incomplete current year. On calendar rollover, the completed year becomes eligible for historical modeling automatically and the new calendar year becomes the YTD monitor year.
-
-If UDOT has not yet published the new annual current-year layer, the YTD monitor reports that condition and waits; the historical pipeline continues normally.
+The incomplete current year is excluded from the historical O/E/FDR model. At calendar rollover, the completed year automatically becomes eligible for historical modeling and the new calendar year becomes the YTD monitor year. If the new current-year UDOT layer is not yet available, the YTD monitor reports that condition while the historical pipeline remains usable.
 
 ## 3. Severe crash definition
 
@@ -42,6 +40,8 @@ Validation includes:
 - crash/AADT cross-source matching, and
 - spatial route-match quality.
 
+Current-year monitoring additionally reports invalid/undated timestamps, records dated outside the monitor year, missing crash IDs, and duplicate non-null IDs after normalization.
+
 ## 5. Crash-to-route spatial referencing
 
 An earlier prototype tested the crash-source accumulated mileage field as a corridor location. Validation showed geographically impossible clustering across multiple counties for the same apparent milepoint, so that method was discarded.
@@ -55,9 +55,9 @@ The production approach instead:
 5. Projects the crash point onto the official route line.
 6. Derives an analytical route milepoint using UDOT begin/end mileage and normalized line position.
 
-This spatial LRS workflow is the basis for five-mile corridor construction.
+The route-reference download is object-ID paginated and count-validated before spatial processing.
 
-## 6. Traffic exposure
+## 6. Traffic exposure and annual rollover
 
 For each AADT section/year:
 
@@ -65,7 +65,14 @@ For each AADT section/year:
 
 Severe crash rates are expressed per 100 million vehicle miles traveled.
 
-The project currently uses the UDOT AADT 2024 Unrounded publication, including explicit proxy handling where the crash year is newer than the available AADT year.
+The configured exposure source is currently **UDOT AADT 2024 Unrounded**. Historical analysis years are generated dynamically from the AADT year fields available in that configured source:
+
+1. Use same-year AADT when available.
+2. Otherwise use the newest available AADT year less than or equal to the analysis year.
+3. Mark the row with `aadt_proxy_flag = 1` when a proxy year is used.
+4. Publish the analysis-year → AADT-year mapping in the pipeline report.
+
+This lets a newly completed crash year move into the historical model without an annual SQL edit even if same-year AADT has not yet been published. Automatic discovery of an entirely new future AADT publication URL is not currently implemented; changing the configured AADT source remains a maintenance task when UDOT publishes a newer defensible exposure dataset.
 
 ## 7. Five-mile corridor screening
 
@@ -87,7 +94,7 @@ The screening layer uses:
 - exact 95% Poisson confidence intervals for the O/E ratio, and
 - Benjamini-Hochberg false-discovery-rate correction.
 
-The peer expected count is estimated from the observational dataset and treated as fixed for this screening uncertainty calculation. This is a prioritization POC, not an official crash-frequency safety-performance function.
+The peer expected count is estimated from the observational dataset and treated as fixed for this screening uncertainty calculation. This is a prioritization proof-of-concept, not an official crash-frequency safety-performance function.
 
 ## 9. Executive corridor consolidation
 
@@ -106,7 +113,7 @@ These are descriptive overrepresentation measures, not causal effects.
 
 ## 11. Current-year YTD monitor
 
-The YTD monitor automatically discovers the current calendar-year UDOT layer, preferring the nightly FeatureServer. It produces:
+The YTD monitor discovers the current calendar-year UDOT crash layer, preferring the nightly FeatureServer. It produces:
 
 - current-year crash, severe-crash and fatal-crash counts,
 - severe/fatal crash map records,
@@ -114,7 +121,14 @@ The YTD monitor automatically discovers the current calendar-year UDOT layer, pr
 - same-period comparisons with up to five prior completed years, and
 - monthly severe/fatal trends versus the same-period historical average.
 
-The comparison cutoff uses the latest crash date represented in the current-year data. Prior completed years are truncated to the same month/day so a partial year is not compared with full-year totals.
+UDOT `TimestampOffset` values are parsed as timezone-aware timestamps and converted to `America/Denver` before deriving dates, months, or comparison cutoffs. This avoids shifting late-night Utah crashes into the next UTC calendar date.
+
+Source freshness and crash occurrence are treated separately:
+
+- **Data as of:** latest valid `CURRENT_AS_OF_DATE` when available.
+- **YTD comparison cutoff:** the earlier of today's Utah-local date and the source as-of date.
+
+Historical comparison years are truncated to the same month/day cutoff. Invalid or undated current-year crash timestamps are excluded from same-period YTD comparisons and reported separately as data-quality metrics.
 
 Current-year data remain explicitly labeled preliminary because recent records can be delayed or revised.
 
@@ -125,14 +139,6 @@ Current-year data remain explicitly labeled preliminary because recent records c
 - Five-mile bins and merged clusters are analytical constructs, not official project boundaries.
 - Peer expected counts are estimated from the same observational dataset.
 - Current-year crash data are preliminary and may be incomplete near the reporting date.
-- The AADT source is currently a fixed 2024 publication and should be refreshed when a newer defensible exposure source is available.
-- Production roadway-safety decisions should use UDOT-approved engineering methods, roadway characteristics and formal safety-performance modeling.
-
-
-## Current-year monitoring and automatic rollover
-
-The current calendar year is treated as preliminary YTD data and is intentionally excluded from the completed-year O/E/FDR corridor model. ArcGIS `TimestampOffset` values are parsed safely and converted to `America/Denver` before date-based comparisons. `CURRENT_AS_OF_DATE` is used as the source-freshness signal when available.
-
-At calendar rollover, the completed crash year becomes eligible for the historical model automatically. Historical AADT exposure rows are generated dynamically: same-year AADT is preferred; when unavailable, the newest prior available AADT is used as an explicitly labeled proxy.
-
-Current-year same-period comparisons exclude invalid or undated crash timestamps and report those records separately as data-quality metrics.
+- AADT is an annualized exposure estimate; proxy years may be used when same-year AADT is unavailable.
+- The configured AADT publication must be manually updated when adopting an entirely new UDOT AADT source.
+- Production roadway-safety decisions should use UDOT-approved engineering methods, roadway characteristics, and formal safety-performance modeling.
