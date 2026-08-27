@@ -495,72 +495,20 @@ def auto_view(df, default_lat=39.32, default_lon=-111.67, default_zoom=5.3):
 
 
 # -------------------------------------------------------------------
-# Data freshness / pipeline status
-# -------------------------------------------------------------------
-last_refresh = _latest_successful_refresh()
-next_refresh = _next_scheduled_refresh()
-current_mode = _refresh_mode_label()
-historical_cache = _historical_cache_label()
-network_rows = incremental_current.get("network_rows_fetched")
-network_note = (
-    f" · {int(network_rows):,} source rows fetched"
-    if isinstance(network_rows, (int, float))
-    else ""
-)
-
-st.markdown(
-    f"""
-    <div style="
-        margin: 0.7rem 0 1.2rem 0;
-        padding: 14px 16px;
-        border: 1px solid {UTAH_BORDER};
-        border-top: 4px solid {UTAH_GOLD};
-        border-radius: 12px;
-        background: {UTAH_LIGHT};
-    ">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
-        <div style="font-size:0.88rem;font-weight:800;color:{UTAH_NAVY};letter-spacing:0.04em;">DATA FRESHNESS</div>
-        <div style="font-size:0.78rem;color:{UTAH_SLATE};">Weekly cloud refresh · manual refresh also supported</div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;">
-        <div style="background:{UTAH_WHITE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:10px 12px;">
-          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">LAST SUCCESSFUL REFRESH</div>
-          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{_format_utah_datetime(last_refresh)}</div>
-        </div>
-        <div style="background:{UTAH_WHITE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:10px 12px;">
-          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">NEXT SCHEDULED REFRESH</div>
-          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{_format_utah_datetime(next_refresh)}</div>
-        </div>
-        <div style="background:{UTAH_PALE_GOLD};border:1px solid {UTAH_GOLD};border-radius:9px;padding:10px 12px;">
-          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">CURRENT-YEAR REFRESH</div>
-          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{current_mode}</div>
-          <div style="font-size:0.73rem;color:{UTAH_SLATE};margin-top:2px;">60-day reconciliation{network_note}</div>
-        </div>
-        <div style="background:{UTAH_PALE_BLUE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:10px 12px;">
-          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">HISTORICAL CACHE</div>
-          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{historical_cache}</div>
-          <div style="font-size:0.73rem;color:{UTAH_SLATE};margin-top:2px;">Completed years are reused until reconciliation is due.</div>
-        </div>
-      </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
-# -------------------------------------------------------------------
 # Tabs
 # -------------------------------------------------------------------
 monitor_year = phase3c.get("current_year")
 if monitor_year is None:
     monitor_year = pd.Timestamp.utcnow().year
 
-tab_statewide, tab_current, tab_priority, tab_why, tab_method = st.tabs(
+tab_statewide, tab_current, tab_priority, tab_why, tab_refresh, tab_method = st.tabs(
     [
         "1. Historical Statewide",
         f"2. {monitor_year} YTD Monitor",
         "3. Priority Corridors",
         "4. Why This Corridor?",
-        "5. Methodology",
+        "5. Data Refresh",
+        "6. Methodology",
     ]
 )
 
@@ -1647,7 +1595,78 @@ with tab_why:
     )
 
 # ===================================================================
-# TAB 5 — METHODOLOGY
+# TAB 5 — DATA REFRESH
+# ===================================================================
+with tab_refresh:
+    st.header("Data refresh and pipeline status")
+    st.write(
+        "This view documents the automated publishing cycle behind the dashboard: "
+        "when the analytics were last refreshed, when the next scheduled refresh is "
+        "expected, and how the incremental ingestion layer handled the latest run."
+    )
+
+    last_refresh = _latest_successful_refresh()
+    next_refresh = _next_scheduled_refresh()
+    current_mode = _refresh_mode_label()
+    historical_cache = _historical_cache_label()
+    network_rows = incremental_current.get("network_rows_fetched")
+    network_note = (
+        f"{int(network_rows):,} source rows fetched"
+        if isinstance(network_rows, (int, float))
+        else "Source-row count unavailable"
+    )
+
+    st.markdown(
+        f"""
+        <div style="
+            margin:0.5rem 0 1.15rem 0;
+            padding:16px;
+            border:1px solid {UTAH_BORDER};
+            border-top:4px solid {UTAH_GOLD};
+            border-radius:12px;
+            background:{UTAH_LIGHT};
+        ">
+          <div style="font-size:0.88rem;font-weight:800;color:{UTAH_NAVY};letter-spacing:0.04em;margin-bottom:12px;">
+            DATA FRESHNESS
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:12px;">
+            <div style="background:{UTAH_WHITE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:13px 14px;">
+              <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">LAST SUCCESSFUL REFRESH</div>
+              <div style="font-size:1.05rem;color:{UTAH_NAVY};font-weight:800;margin-top:4px;">{_format_utah_datetime(last_refresh)}</div>
+            </div>
+            <div style="background:{UTAH_WHITE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:13px 14px;">
+              <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">NEXT SCHEDULED REFRESH</div>
+              <div style="font-size:1.05rem;color:{UTAH_NAVY};font-weight:800;margin-top:4px;">{_format_utah_datetime(next_refresh)}</div>
+            </div>
+            <div style="background:{UTAH_PALE_GOLD};border:1px solid {UTAH_GOLD};border-radius:9px;padding:13px 14px;">
+              <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">CURRENT-YEAR REFRESH MODE</div>
+              <div style="font-size:1.05rem;color:{UTAH_NAVY};font-weight:800;margin-top:4px;">{current_mode}</div>
+              <div style="font-size:0.75rem;color:{UTAH_SLATE};margin-top:3px;">{network_note}</div>
+            </div>
+            <div style="background:{UTAH_PALE_BLUE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:13px 14px;">
+              <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">HISTORICAL CACHE STATUS</div>
+              <div style="font-size:1.05rem;color:{UTAH_NAVY};font-weight:800;margin-top:4px;">{historical_cache}</div>
+              <div style="font-size:0.75rem;color:{UTAH_SLATE};margin-top:3px;">Completed years are reused until a reconciliation is required.</div>
+            </div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    st.subheader("How the refresh works")
+    st.markdown(
+        """
+- **Scheduled cloud pipeline:** GitHub Actions runs the ingestion and analytics workflow on its configured schedule.
+- **Current year:** the pipeline uses incremental ingestion with a rolling reconciliation window and upsert logic.
+- **Completed historical years:** cached data is reused unless reconciliation or a detected source change requires a refresh.
+- **Annual rollover:** the completed year receives a final reconciliation before joining the historical model, and the new calendar year becomes the YTD monitor.
+- **Safe fallback:** if incremental state or cache is unavailable, the pipeline can rebuild from the source rather than publish a partial dataset.
+        """
+    )
+
+# ===================================================================
+# TAB 6 — METHODOLOGY
 # ===================================================================
 with tab_method:
     st.header("Methodology and governance")
