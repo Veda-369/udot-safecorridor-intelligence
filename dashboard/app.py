@@ -203,59 +203,6 @@ st.caption(
     "with text labels, marker size, outlines, and tables—not color alone."
 )
 
-# -------------------------------------------------------------------
-# Data freshness / pipeline status
-# -------------------------------------------------------------------
-last_refresh = _latest_successful_refresh()
-next_refresh = _next_scheduled_refresh()
-current_mode = _refresh_mode_label()
-historical_cache = _historical_cache_label()
-network_rows = incremental_current.get("network_rows_fetched")
-network_note = (
-    f" · {int(network_rows):,} source rows fetched"
-    if isinstance(network_rows, (int, float))
-    else ""
-)
-
-st.markdown(
-    f"""
-    <div style="
-        margin: 0.7rem 0 1.2rem 0;
-        padding: 14px 16px;
-        border: 1px solid {UTAH_BORDER};
-        border-top: 4px solid {UTAH_GOLD};
-        border-radius: 12px;
-        background: {UTAH_LIGHT};
-    ">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
-        <div style="font-size:0.88rem;font-weight:800;color:{UTAH_NAVY};letter-spacing:0.04em;">DATA FRESHNESS</div>
-        <div style="font-size:0.78rem;color:{UTAH_SLATE};">Weekly cloud refresh · manual refresh also supported</div>
-      </div>
-      <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;">
-        <div style="background:{UTAH_WHITE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:10px 12px;">
-          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">LAST SUCCESSFUL REFRESH</div>
-          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{_format_utah_datetime(last_refresh)}</div>
-        </div>
-        <div style="background:{UTAH_WHITE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:10px 12px;">
-          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">NEXT SCHEDULED REFRESH</div>
-          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{_format_utah_datetime(next_refresh)}</div>
-        </div>
-        <div style="background:{UTAH_PALE_GOLD};border:1px solid {UTAH_GOLD};border-radius:9px;padding:10px 12px;">
-          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">CURRENT-YEAR REFRESH</div>
-          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{current_mode}</div>
-          <div style="font-size:0.73rem;color:{UTAH_SLATE};margin-top:2px;">60-day reconciliation{network_note}</div>
-        </div>
-        <div style="background:{UTAH_PALE_BLUE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:10px 12px;">
-          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">HISTORICAL CACHE</div>
-          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{historical_cache}</div>
-          <div style="font-size:0.73rem;color:{UTAH_SLATE};margin-top:2px;">Completed years are reused until reconciliation is due.</div>
-        </div>
-      </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
 required = [STATEWIDE_POINTS, EXECUTIVE, DRIVERS]
 missing = [str(p.relative_to(ROOT)) for p in required if not p.exists()]
 if missing:
@@ -546,6 +493,59 @@ def auto_view(df, default_lat=39.32, default_lon=-111.67, default_zoom=5.3):
         pitch=0,
     )
 
+
+# -------------------------------------------------------------------
+# Data freshness / pipeline status
+# -------------------------------------------------------------------
+last_refresh = _latest_successful_refresh()
+next_refresh = _next_scheduled_refresh()
+current_mode = _refresh_mode_label()
+historical_cache = _historical_cache_label()
+network_rows = incremental_current.get("network_rows_fetched")
+network_note = (
+    f" · {int(network_rows):,} source rows fetched"
+    if isinstance(network_rows, (int, float))
+    else ""
+)
+
+st.markdown(
+    f"""
+    <div style="
+        margin: 0.7rem 0 1.2rem 0;
+        padding: 14px 16px;
+        border: 1px solid {UTAH_BORDER};
+        border-top: 4px solid {UTAH_GOLD};
+        border-radius: 12px;
+        background: {UTAH_LIGHT};
+    ">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+        <div style="font-size:0.88rem;font-weight:800;color:{UTAH_NAVY};letter-spacing:0.04em;">DATA FRESHNESS</div>
+        <div style="font-size:0.78rem;color:{UTAH_SLATE};">Weekly cloud refresh · manual refresh also supported</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;">
+        <div style="background:{UTAH_WHITE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:10px 12px;">
+          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">LAST SUCCESSFUL REFRESH</div>
+          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{_format_utah_datetime(last_refresh)}</div>
+        </div>
+        <div style="background:{UTAH_WHITE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:10px 12px;">
+          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">NEXT SCHEDULED REFRESH</div>
+          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{_format_utah_datetime(next_refresh)}</div>
+        </div>
+        <div style="background:{UTAH_PALE_GOLD};border:1px solid {UTAH_GOLD};border-radius:9px;padding:10px 12px;">
+          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">CURRENT-YEAR REFRESH</div>
+          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{current_mode}</div>
+          <div style="font-size:0.73rem;color:{UTAH_SLATE};margin-top:2px;">60-day reconciliation{network_note}</div>
+        </div>
+        <div style="background:{UTAH_PALE_BLUE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:10px 12px;">
+          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">HISTORICAL CACHE</div>
+          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{historical_cache}</div>
+          <div style="font-size:0.73rem;color:{UTAH_SLATE};margin-top:2px;">Completed years are reused until reconciliation is due.</div>
+        </div>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 # -------------------------------------------------------------------
 # Tabs
