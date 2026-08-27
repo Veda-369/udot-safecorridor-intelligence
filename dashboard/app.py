@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import altair as alt
 import pandas as pd
@@ -25,6 +27,9 @@ CURRENT_YEAR_ROUTE = ROOT / "data" / "gold" / "current_year_route_summary.parque
 CURRENT_YEAR_COMPARE = ROOT / "data" / "gold" / "current_year_ytd_comparison.parquet"
 CURRENT_YEAR_MONTHLY = ROOT / "data" / "gold" / "current_year_monthly_trend.parquet"
 PHASE3C_REPORT = ROOT / "reports" / "phase3c_current_year_monitor.json"
+PIPELINE_REPORT = ROOT / "reports" / "pipeline_run.json"
+INCREMENTAL_HIST_REPORT = ROOT / "reports" / "incremental_historical_refresh.json"
+INCREMENTAL_CURRENT_REPORT = ROOT / "reports" / "incremental_current_refresh.json"
 
 st.set_page_config(
     page_title="UDOT SafeCorridor Intelligence",
@@ -198,6 +203,59 @@ st.caption(
     "with text labels, marker size, outlines, and tables—not color alone."
 )
 
+# -------------------------------------------------------------------
+# Data freshness / pipeline status
+# -------------------------------------------------------------------
+last_refresh = _latest_successful_refresh()
+next_refresh = _next_scheduled_refresh()
+current_mode = _refresh_mode_label()
+historical_cache = _historical_cache_label()
+network_rows = incremental_current.get("network_rows_fetched")
+network_note = (
+    f" · {int(network_rows):,} source rows fetched"
+    if isinstance(network_rows, (int, float))
+    else ""
+)
+
+st.markdown(
+    f"""
+    <div style="
+        margin: 0.7rem 0 1.2rem 0;
+        padding: 14px 16px;
+        border: 1px solid {UTAH_BORDER};
+        border-top: 4px solid {UTAH_GOLD};
+        border-radius: 12px;
+        background: {UTAH_LIGHT};
+    ">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;">
+        <div style="font-size:0.88rem;font-weight:800;color:{UTAH_NAVY};letter-spacing:0.04em;">DATA FRESHNESS</div>
+        <div style="font-size:0.78rem;color:{UTAH_SLATE};">Weekly cloud refresh · manual refresh also supported</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:10px;">
+        <div style="background:{UTAH_WHITE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:10px 12px;">
+          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">LAST SUCCESSFUL REFRESH</div>
+          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{_format_utah_datetime(last_refresh)}</div>
+        </div>
+        <div style="background:{UTAH_WHITE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:10px 12px;">
+          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">NEXT SCHEDULED REFRESH</div>
+          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{_format_utah_datetime(next_refresh)}</div>
+        </div>
+        <div style="background:{UTAH_PALE_GOLD};border:1px solid {UTAH_GOLD};border-radius:9px;padding:10px 12px;">
+          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">CURRENT-YEAR REFRESH</div>
+          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{current_mode}</div>
+          <div style="font-size:0.73rem;color:{UTAH_SLATE};margin-top:2px;">60-day reconciliation{network_note}</div>
+        </div>
+        <div style="background:{UTAH_PALE_BLUE};border:1px solid {UTAH_BORDER};border-radius:9px;padding:10px 12px;">
+          <div style="font-size:0.75rem;color:{UTAH_SLATE};font-weight:700;">HISTORICAL CACHE</div>
+          <div style="font-size:0.98rem;color:{UTAH_NAVY};font-weight:800;margin-top:3px;">{historical_cache}</div>
+          <div style="font-size:0.73rem;color:{UTAH_SLATE};margin-top:2px;">Completed years are reused until reconciliation is due.</div>
+        </div>
+      </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 required = [STATEWIDE_POINTS, EXECUTIVE, DRIVERS]
 missing = [str(p.relative_to(ROOT)) for p in required if not p.exists()]
 if missing:
@@ -240,6 +298,21 @@ phase3b = (
 phase3c = (
     json.loads(PHASE3C_REPORT.read_text(encoding="utf-8"))
     if PHASE3C_REPORT.exists()
+    else {}
+)
+pipeline_report = (
+    json.loads(PIPELINE_REPORT.read_text(encoding="utf-8"))
+    if PIPELINE_REPORT.exists()
+    else {}
+)
+incremental_hist = (
+    json.loads(INCREMENTAL_HIST_REPORT.read_text(encoding="utf-8"))
+    if INCREMENTAL_HIST_REPORT.exists()
+    else {}
+)
+incremental_current = (
+    json.loads(INCREMENTAL_CURRENT_REPORT.read_text(encoding="utf-8"))
+    if INCREMENTAL_CURRENT_REPORT.exists()
     else {}
 )
 current_year_crashes = (
@@ -287,6 +360,86 @@ if not current_year_crashes.empty:
 # -------------------------------------------------------------------
 # Helper functions
 # -------------------------------------------------------------------
+UTAH_TIMEZONE = ZoneInfo("America/Denver")
+SCHEDULE_WEEKDAY = 0  # Monday
+SCHEDULE_HOUR_UTC = 10
+SCHEDULE_MINUTE_UTC = 17
+
+
+def _parse_utc_timestamp(value):
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (ValueError, TypeError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _format_utah_datetime(value):
+    parsed = value if isinstance(value, datetime) else _parse_utc_timestamp(value)
+    if parsed is None:
+        return "Not available yet"
+    local = parsed.astimezone(UTAH_TIMEZONE)
+    hour = local.strftime("%I").lstrip("0") or "12"
+    return f"{local.strftime('%b %d, %Y')} · {hour}:{local.strftime('%M %p %Z')}"
+
+
+def _next_scheduled_refresh(now_utc=None):
+    now_utc = (now_utc or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    days_ahead = (SCHEDULE_WEEKDAY - now_utc.weekday()) % 7
+    candidate = (now_utc + timedelta(days=days_ahead)).replace(
+        hour=SCHEDULE_HOUR_UTC,
+        minute=SCHEDULE_MINUTE_UTC,
+        second=0,
+        microsecond=0,
+    )
+    if candidate <= now_utc:
+        candidate += timedelta(days=7)
+    return candidate
+
+
+def _latest_successful_refresh():
+    candidates = []
+    if pipeline_report.get("status") == "success":
+        candidates.append(_parse_utc_timestamp(pipeline_report.get("finished_at_utc")))
+    if phase3c.get("status") == "success":
+        candidates.append(_parse_utc_timestamp(phase3c.get("generated_at_utc")))
+    if incremental_hist.get("status") == "success":
+        candidates.append(_parse_utc_timestamp(incremental_hist.get("generated_at_utc")))
+    if incremental_current.get("status") == "success":
+        candidates.append(_parse_utc_timestamp(incremental_current.get("generated_at_utc")))
+    candidates = [value for value in candidates if value is not None]
+    return max(candidates) if candidates else None
+
+
+def _refresh_mode_label():
+    mode = incremental_current.get("mode")
+    labels = {
+        "cache_reuse": "Cache reuse",
+        "incremental_reconcile": "Incremental reconcile",
+        "full_refresh": "Full reconciliation",
+        "full_refresh_forced": "Full reconciliation",
+        "full_refresh_fallback": "Full fallback refresh",
+    }
+    if mode:
+        return labels.get(mode, str(mode).replace("_", " ").title())
+    status = incremental_current.get("status")
+    if status == "current_layer_unavailable":
+        return "Current layer unavailable"
+    return "Awaiting first refresh"
+
+
+def _historical_cache_label():
+    years = incremental_hist.get("years") or []
+    if not years:
+        return "Awaiting first refresh"
+    reused = sum(1 for item in years if item.get("mode") == "cache_reuse")
+    refreshed = sum(1 for item in years if item.get("mode") == "full_refresh")
+    return f"{reused} reused · {refreshed} refreshed"
+
 def filtered_multiselect(label, options, key, help_text=None, placeholder=None):
     """Native Streamlit multiselect; empty selection means All."""
     return st.multiselect(

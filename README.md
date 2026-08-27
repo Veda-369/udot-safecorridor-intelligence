@@ -356,6 +356,38 @@ Historical exposure years are also generated dynamically. For each analysis year
 
 The historical extractor preserves the validated legacy source where available and falls back to UDOT's nightly FeatureServer for newer annual layers. Current-year TimestampOffset values are normalized to `America/Denver`, and source freshness is tracked separately from crash occurrence dates.
 
+
+## Hybrid incremental refresh
+
+The scheduled cloud pipeline does **not** need to download every historical crash year on every run. A persistent GitHub Actions cache stores one canonical Parquet snapshot per crash year plus a small refresh-state manifest.
+
+Refresh behavior:
+
+```text
+Completed historical years
+    source metadata unchanged -> reuse cached year
+    source revision/count changed -> refresh only that year
+    newest completed year -> safety full reconciliation every 30 days
+    older archive years -> safety full reconciliation every 180 days
+
+Current calendar year
+    source unchanged -> reuse cache
+    source changed -> re-query the most recent 60-day crash window
+                      + OBJECTIDs newer than the cached maximum
+                      + upsert/reconcile by crash ID / object ID
+    every 30 days -> full current-year reconciliation
+
+Calendar rollover
+    previous current year -> one final full reconciliation -> historical
+    new calendar year     -> becomes the current YTD incremental feed
+```
+
+The cache is an optimization, **not a dependency for correctness**. If GitHub evicts the Actions cache or a local cache is deleted, the next run automatically performs the required full source fetches and recreates it. Historical revision checks use ArcGIS layer edit metadata plus feature counts; therefore a changed historical layer is not silently frozen forever.
+
+The cache itself is excluded from Git and contains only public UDOT data. Published recruiter-facing Gold datasets remain version-controlled as before.
+
+See [`docs/incremental_refresh.md`](docs/incremental_refresh.md) for the cache state, reconciliation rules, failure fallback, and environment controls.
+
 ## Automation
 
 The GitHub Actions workflow is defined in:

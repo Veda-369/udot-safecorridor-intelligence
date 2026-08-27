@@ -32,3 +32,14 @@ Run the GitHub Actions workflow on `main`. A production-ready rollover status re
 
 ## Disclaimer
 This is an independent portfolio proof-of-concept using public UDOT data. It is not affiliated with or endorsed by UDOT. Priority results are screening signals for investigation, not causal findings or official roadway recommendations.
+
+
+## Incremental refresh upgrade
+- Hybrid incremental crash ingestion implemented
+- Per-year historical cache with ArcGIS revision/count invalidation
+- 30-day recent-history / 180-day archive safety reconciliations
+- Current-year 60-day rolling reconciliation + new OBJECTID query
+- 30-day full current-year reconciliation safety net
+- Final rollover reconciliation for the completed year
+- GitHub Actions persistent cache (`actions/cache@v5`)
+- Full-fetch fallback when cache is missing or incremental queries fail

@@ -8,6 +8,7 @@ def test_required_project_files_exist():
         ROOT / "src" / "pipeline.py",
         ROOT / "src" / "ingestion" / "crashes.py",
         ROOT / "src" / "ingestion" / "aadt.py",
+        ROOT / "src" / "ingestion" / "incremental.py",
         ROOT / "sql" / "01_silver_crashes.sql",
         ROOT / "sql" / "02_silver_aadt.sql",
         ROOT / "sql" / "03_gold_risk.sql",

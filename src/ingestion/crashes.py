@@ -224,6 +224,35 @@ def _features_to_frame(
     return pd.DataFrame(rows)
 
 
+def extract_crash_layer(
+    layer: CrashLayer,
+    *,
+    where: str = "1=1",
+) -> pd.DataFrame:
+    """Extract one discovered UDOT annual crash layer using the canonical schema."""
+    LOGGER.info(
+        "Extracting UDOT crash layer %s (id=%s, source=%s, where=%s)",
+        layer.year,
+        layer.layer_id,
+        layer.source,
+        where,
+    )
+    out_fields: list[str] | str = (
+        CRASH_FIELDS if layer.source == "legacy_mapserver" else "*"
+    )
+    features = query_all_features(
+        f"{layer.service_url}/{layer.layer_id}",
+        out_fields=out_fields,
+        where=where,
+        return_geometry=True,
+        out_sr=4326,
+        page_size=ARCGIS_PAGE_SIZE,
+    )
+    frame = _features_to_frame(features, layer.year, layer.source)
+    frame["EXTRACTED_AT_UTC"] = datetime.now(timezone.utc).isoformat()
+    return frame
+
+
 def extract_crashes(
     min_year: int | None = None,
     max_year: int | None = None,
@@ -261,29 +290,5 @@ def extract_crashes(
     if missing_years:
         LOGGER.warning("Crash layers not available for years: %s", missing_years)
 
-    frames: list[pd.DataFrame] = []
-    for layer in layers:
-        LOGGER.info(
-            "Extracting UDOT crash layer %s (id=%s, source=%s)",
-            layer.year,
-            layer.layer_id,
-            layer.source,
-        )
-        # Legacy service accepts the validated canonical field list. The newer
-        # FeatureServer has a few renamed fields, so request all fields and then
-        # normalize them to the canonical schema.
-        out_fields: list[str] | str = (
-            CRASH_FIELDS if layer.source == "legacy_mapserver" else "*"
-        )
-        features = query_all_features(
-            f"{layer.service_url}/{layer.layer_id}",
-            out_fields=out_fields,
-            return_geometry=True,
-            out_sr=4326,
-            page_size=ARCGIS_PAGE_SIZE,
-        )
-        frames.append(_features_to_frame(features, layer.year, layer.source))
-
-    result = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
-    result["EXTRACTED_AT_UTC"] = datetime.now(timezone.utc).isoformat()
-    return result
+    frames = [extract_crash_layer(layer) for layer in layers]
+    return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()

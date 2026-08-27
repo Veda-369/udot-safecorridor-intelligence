@@ -14,6 +14,9 @@ GOLD_DIR = DATA_DIR / "gold"
 REPORTS_DIR = ROOT / "reports"
 WAREHOUSE_DIR = ROOT / "warehouse"
 SQL_DIR = ROOT / "sql"
+CACHE_DIR = DATA_DIR / "cache"
+CRASH_CACHE_DIR = CACHE_DIR / "crashes"
+REFERENCE_DIR = DATA_DIR / "reference"
 
 # Legacy MapServer retained because it contains the 2018 layer used by the
 # historical model. The newer public FeatureServer is refreshed nightly and
@@ -54,6 +57,27 @@ CURRENT_MONITOR_COMPARE_YEARS = int(
 )
 ARCGIS_PAGE_SIZE = int(os.getenv("ARCGIS_PAGE_SIZE", "2000"))
 
+# Hybrid incremental-refresh policy.
+INCREMENTAL_REFRESH_ENABLED = os.getenv("UDOT_INCREMENTAL_REFRESH", "true").strip().lower() not in {
+    "0", "false", "no", "off"
+}
+CURRENT_RECONCILIATION_DAYS = int(
+    os.getenv("UDOT_CURRENT_RECONCILIATION_DAYS", "60")
+)
+CURRENT_FULL_RECONCILIATION_DAYS = int(
+    os.getenv("UDOT_CURRENT_FULL_RECONCILIATION_DAYS", "30")
+)
+HISTORICAL_RECENT_RECONCILIATION_DAYS = int(
+    os.getenv("UDOT_HISTORICAL_RECENT_RECONCILIATION_DAYS", "30")
+)
+HISTORICAL_ARCHIVE_RECONCILIATION_DAYS = int(
+    os.getenv("UDOT_HISTORICAL_ARCHIVE_RECONCILIATION_DAYS", "180")
+)
+FORCE_FULL_CRASH_REFRESH = os.getenv("UDOT_FORCE_FULL_CRASH_REFRESH", "false").strip().lower() in {
+    "1", "true", "yes", "on"
+}
+CRASH_CACHE_SCHEMA_VERSION = 2
+
 
 @dataclass(frozen=True)
 class Paths:
@@ -74,11 +98,17 @@ class Paths:
     quality_json: Path = REPORTS_DIR / "quality_report.json"
     pipeline_json: Path = REPORTS_DIR / "pipeline_run.json"
     current_year_json: Path = REPORTS_DIR / "phase3c_current_year_monitor.json"
+    incremental_state_json: Path = CRASH_CACHE_DIR / "incremental_state.json"
+    incremental_historical_json: Path = REPORTS_DIR / "incremental_historical_refresh.json"
+    incremental_current_json: Path = REPORTS_DIR / "incremental_current_refresh.json"
 
 
 PATHS = Paths()
 
 
 def ensure_directories() -> None:
-    for path in (BRONZE_DIR, SILVER_DIR, GOLD_DIR, REPORTS_DIR, WAREHOUSE_DIR):
+    for path in (
+        BRONZE_DIR, SILVER_DIR, GOLD_DIR, REPORTS_DIR, WAREHOUSE_DIR,
+        CACHE_DIR, CRASH_CACHE_DIR, REFERENCE_DIR,
+    ):
         path.mkdir(parents=True, exist_ok=True)

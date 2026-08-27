@@ -142,3 +142,12 @@ Current-year data remain explicitly labeled preliminary because recent records c
 - AADT is an annualized exposure estimate; proxy years may be used when same-year AADT is unavailable.
 - The configured AADT publication must be manually updated when adopting an entirely new UDOT AADT source.
 - Production roadway-safety decisions should use UDOT-approved engineering methods, roadway characteristics, and formal safety-performance modeling.
+
+
+## Incremental refresh and reconciliation
+
+Crash ingestion uses a hybrid cache/reconciliation strategy. Completed years are stored as per-year cached Parquet snapshots and reused while the ArcGIS layer revision and feature count remain unchanged. When either changes, only that annual layer is fully refreshed. As a backstop against metadata that may not expose every same-count correction, the newest completed year receives a full reconciliation every 30 days and older archive years every 180 days.
+
+The active year uses a rolling 60-day reconciliation window plus an `OBJECTID`-greater-than-watermark query. The recent cached window is replaced before upsert so recent deletions/corrections are represented, while late-entered records with older crash dates can still arrive through the new-object query. A full active-year reconciliation is forced every 30 days and whenever the source changes incompatibly or appears to shrink. Any rejected incremental query falls back to a full current-year fetch.
+
+At calendar rollover, the just-completed prior active year receives one final full reconciliation before entering the historical model. The new year then becomes the active YTD feed. GitHub Actions cache is used only as a performance layer; a cache miss causes a safe full rebuild.

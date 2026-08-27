@@ -15,7 +15,7 @@ from src.config import (
     ROOT,
     ensure_directories,
 )
-from src.ingestion.crashes import discover_crash_layers, extract_crashes
+from src.ingestion.incremental import load_current_year_crashes
 
 OUT_CRASHES = PATHS.gold_current_year_crashes
 OUT_COUNTY = PATHS.gold_current_year_county
@@ -322,12 +322,8 @@ def _resolve_cutoff(current: pd.DataFrame) -> tuple[datetime.date, datetime.date
 def main() -> None:
     ensure_directories()
 
-    layers = discover_crash_layers(
-        CURRENT_MONITOR_YEAR,
-        CURRENT_MONITOR_YEAR,
-        prefer_current_service=True,
-    )
-    if not layers:
+    incremental_load = load_current_year_crashes(CURRENT_MONITOR_YEAR)
+    if incremental_load.layer is None:
         _empty_outputs(
             "current_layer_unavailable",
             f"UDOT has not published a {CURRENT_MONITOR_YEAR} crash layer yet.",
@@ -335,12 +331,8 @@ def main() -> None:
         print(f"No {CURRENT_MONITOR_YEAR} crash layer is available yet; monitor outputs are empty.")
         return
 
-    raw = extract_crashes(
-        CURRENT_MONITOR_YEAR,
-        CURRENT_MONITOR_YEAR,
-        prefer_current_service=True,
-        allow_empty=True,
-    )
+    layer = incremental_load.layer
+    raw = incremental_load.frame
     current_all = _normalize_current(raw)
 
     if current_all.empty:
@@ -610,12 +602,13 @@ def main() -> None:
         "data_through_date": cutoff.isoformat(),
         "comparison_years": comparison_years,
         "source_layer": {
-            "year": layers[0].year,
-            "source": layers[0].source,
-            "service_url": layers[0].service_url,
-            "layer_id": layers[0].layer_id,
+            "year": layer.year,
+            "source": layer.source,
+            "service_url": layer.service_url,
+            "layer_id": layer.layer_id,
         },
         "summary": current_counts,
+        "incremental_refresh": incremental_load.stats,
         "quality": quality,
         "historical_same_period_average": {
             key: (round(float(value), 2) if pd.notna(value) else None)

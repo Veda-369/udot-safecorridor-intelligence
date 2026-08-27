@@ -13,6 +13,7 @@ from src.config import (
     CRASH_MAX_YEAR,
     CRASH_MIN_YEAR,
     CURRENT_MONITOR_YEAR,
+    CALENDAR_CURRENT_YEAR,
     PATHS,
     ROOT,
     SQL_DIR,
@@ -23,7 +24,7 @@ from src.ingestion.aadt import (
     discover_aadt_year_fields,
     extract_aadt,
 )
-from src.ingestion.crashes import extract_crashes
+from src.ingestion.incremental import load_historical_crashes
 from src.quality.checks import validate_bronze
 
 logging.basicConfig(
@@ -79,7 +80,12 @@ def run() -> None:
         CURRENT_MONITOR_YEAR,
     )
 
-    crashes = extract_crashes()
+    historical_load = load_historical_crashes(
+        CRASH_MIN_YEAR,
+        CRASH_MAX_YEAR,
+        current_calendar_year=CALENDAR_CURRENT_YEAR,
+    )
+    crashes = historical_load.frame
 
     LOGGER.info("Extracting AADT")
     aadt = extract_aadt()
@@ -173,6 +179,7 @@ def run() -> None:
             "historical_crash_year_max": CRASH_MAX_YEAR,
             "current_monitor_year": CURRENT_MONITOR_YEAR,
             "crash_rows": int(len(crashes)),
+            "historical_incremental_refresh": historical_load.stats,
             "aadt_rows": int(len(aadt)),
             "aadt_available_source_years": available_aadt_years,
             "aadt_analysis_year_mapping": _records(analysis_proxy_map),

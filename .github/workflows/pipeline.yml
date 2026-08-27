@@ -28,6 +28,18 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
+      - name: Restore incremental data cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            data/cache
+            data/reference
+          # Unique save key + broad restore prefix restores the newest successful
+          # cache and saves a new immutable cache after this run succeeds.
+          key: udot-data-cache-v2-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            udot-data-cache-v2-${{ runner.os }}-
+
       - name: Install dependencies
         run: pip install -r requirements.txt
 
@@ -37,6 +49,11 @@ jobs:
       - name: Run completed-year historical pipeline
         env:
           UDOT_CRASH_MIN_YEAR: "2018"
+          UDOT_INCREMENTAL_REFRESH: "true"
+          UDOT_CURRENT_RECONCILIATION_DAYS: "60"
+          UDOT_CURRENT_FULL_RECONCILIATION_DAYS: "30"
+          UDOT_HISTORICAL_RECENT_RECONCILIATION_DAYS: "30"
+          UDOT_HISTORICAL_ARCHIVE_RECONCILIATION_DAYS: "180"
         run: python -m src.pipeline
 
       - name: Screen candidate routes
@@ -74,6 +91,10 @@ jobs:
           fi
 
       - name: Build dynamic current-year YTD monitor
+        env:
+          UDOT_INCREMENTAL_REFRESH: "true"
+          UDOT_CURRENT_RECONCILIATION_DAYS: "60"
+          UDOT_CURRENT_FULL_RECONCILIATION_DAYS: "30"
         run: python phase3c_current_year_monitor.py
 
       - name: Commit refreshed current-year outputs
@@ -87,7 +108,8 @@ jobs:
             data/gold/current_year_route_summary.parquet \
             data/gold/current_year_ytd_comparison.parquet \
             data/gold/current_year_monthly_trend.parquet \
-            reports/phase3c_current_year_monitor.json
+            reports/phase3c_current_year_monitor.json \
+            reports/incremental_current_refresh.json
 
           if git diff --cached --quiet; then
             echo "No current-year published-output changes."

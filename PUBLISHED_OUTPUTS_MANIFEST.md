@@ -37,3 +37,10 @@ Expected reports include:
 - `reports/phase3c_current_year_monitor.json`
 
 GitHub Actions regenerates and republishes these outputs after the source update is committed.
+
+
+### Refresh observability reports
+- `reports/incremental_historical_refresh.json` — which historical years were reused vs re-fetched
+- `reports/incremental_current_refresh.json` — current-year refresh mode, rows fetched, reconciliation/fallback details
+
+The underlying `data/cache/` directory is deliberately **not** published to Git; GitHub Actions cache persists it between successful workflow runs.

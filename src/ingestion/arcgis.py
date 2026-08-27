@@ -60,6 +60,20 @@ def service_metadata(service_url: str) -> dict:
     return get_json(service_url, {"f": "json"})
 
 
+
+
+def query_feature_count(layer_url: str, *, where: str = "1=1") -> int:
+    """Return the count for an ArcGIS layer/query filter without fetching rows."""
+    payload = get_json(
+        f"{layer_url}/query",
+        {
+            "f": "json",
+            "where": where,
+            "returnCountOnly": "true",
+        },
+    )
+    return int(payload.get("count", 0))
+
 def query_all_features(
     layer_url: str,
     *,
