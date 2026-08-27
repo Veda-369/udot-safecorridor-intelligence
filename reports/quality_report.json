@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-08-26T19:12:01.396551+00:00",
+  "generated_at_utc": "2026-08-26T21:01:35.004345+00:00",
   "checks": [
     {
       "name": "crash_rows_present",
@@ -17,42 +17,42 @@
     },
     {
       "name": "crash_id_missing_pct",
-      "passed": "True",
+      "passed": true,
       "value": 0.0,
       "threshold": "<= 1%",
       "severity": "error"
     },
     {
       "name": "crash_id_duplicate_pct",
-      "passed": "True",
+      "passed": true,
       "value": 0.0,
       "threshold": "<= 1%",
       "severity": "error"
     },
     {
       "name": "severity_missing_pct",
-      "passed": "True",
+      "passed": true,
       "value": 0.0,
       "threshold": "<= 1%",
       "severity": "error"
     },
     {
       "name": "plausible_coordinate_pct",
-      "passed": "True",
+      "passed": true,
       "value": 99.874,
       "threshold": ">= 95%",
       "severity": "warning"
     },
     {
       "name": "aadt_route_missing_pct",
-      "passed": "True",
+      "passed": true,
       "value": 0.0,
       "threshold": "<= 1%",
       "severity": "error"
     },
     {
       "name": "aadt_segment_length_missing_pct",
-      "passed": "True",
+      "passed": true,
       "value": 0.131,
       "threshold": "<= 5%",
       "severity": "error"

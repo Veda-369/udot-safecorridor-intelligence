@@ -1,13 +1,93 @@
 {
   "status": "success",
-  "started_at_utc": "2026-08-26T19:12:01.396551+00:00",
-  "finished_at_utc": "2026-08-26T19:14:58.011147+00:00",
-  "duration_seconds": 176.614596,
+  "started_at_utc": "2026-08-26T21:01:35.004345+00:00",
+  "finished_at_utc": "2026-08-26T21:04:36.247951+00:00",
+  "duration_seconds": 181.243606,
   "historical_crash_year_min": 2018,
   "historical_crash_year_max": 2025,
   "current_monitor_year": 2026,
   "crash_rows": 449804,
   "aadt_rows": 4574,
+  "aadt_available_source_years": [
+    1981,
+    1982,
+    1983,
+    1984,
+    1985,
+    1986,
+    1987,
+    1988,
+    1989,
+    1990,
+    1991,
+    1992,
+    1993,
+    1994,
+    1995,
+    1996,
+    1997,
+    1998,
+    1999,
+    2000,
+    2001,
+    2002,
+    2003,
+    2004,
+    2005,
+    2006,
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024
+  ],
+  "aadt_analysis_year_mapping": [
+    {
+      "analysis_year": 2018,
+      "aadt_year": 2018
+    },
+    {
+      "analysis_year": 2019,
+      "aadt_year": 2019
+    },
+    {
+      "analysis_year": 2020,
+      "aadt_year": 2020
+    },
+    {
+      "analysis_year": 2021,
+      "aadt_year": 2021
+    },
+    {
+      "analysis_year": 2022,
+      "aadt_year": 2022
+    },
+    {
+      "analysis_year": 2023,
+      "aadt_year": 2023
+    },
+    {
+      "analysis_year": 2024,
+      "aadt_year": 2024
+    },
+    {
+      "analysis_year": 2025,
+      "aadt_year": 2024
+    }
+  ],
   "quality": [
     {
       "crash_rows": 449804,
@@ -15,78 +95,78 @@
       "crashes_evaluated": 449804,
       "crashes_matched_to_aadt": 380839.0,
       "matched_using_aadt_proxy": 17697.0,
-      "eligible_match_rate_pct": 96.51389399257467
+      "eligible_match_rate_pct": 96.5138939926
     }
   ],
   "top_screening_routes": [
     {
       "route_key": "3342",
       "severe_crashes": 3.0,
-      "severe_crashes_per_100m_vmt": 320.9046410167669,
-      "observed_expected_ratio": 69.7418311343791,
+      "severe_crashes_per_100m_vmt": 320.9046410168,
+      "observed_expected_ratio": 69.7418311344,
       "screening_band": "HIGH"
     },
     {
       "route_key": "2245",
       "severe_crashes": 4.0,
-      "severe_crashes_per_100m_vmt": 225.82090017315264,
-      "observed_expected_ratio": 49.07739270017791,
+      "severe_crashes_per_100m_vmt": 225.8209001732,
+      "observed_expected_ratio": 49.0773927002,
       "screening_band": "HIGH"
     },
     {
       "route_key": "2979",
       "severe_crashes": 7.0,
-      "severe_crashes_per_100m_vmt": 217.17610182876433,
-      "observed_expected_ratio": 47.198628764527655,
+      "severe_crashes_per_100m_vmt": 217.1761018288,
+      "observed_expected_ratio": 47.1986287645,
       "screening_band": "HIGH"
     },
     {
       "route_key": "1470",
       "severe_crashes": 4.0,
-      "severe_crashes_per_100m_vmt": 187.87497955132912,
-      "observed_expected_ratio": 40.83065005457218,
+      "severe_crashes_per_100m_vmt": 187.8749795513,
+      "observed_expected_ratio": 40.8306500546,
       "screening_band": "HIGH"
     },
     {
       "route_key": "2829",
       "severe_crashes": 3.0,
-      "severe_crashes_per_100m_vmt": 152.53217132291456,
-      "observed_expected_ratio": 33.149638787577,
+      "severe_crashes_per_100m_vmt": 152.5321713229,
+      "observed_expected_ratio": 33.1496387876,
       "screening_band": "HIGH"
     },
     {
       "route_key": "124",
       "severe_crashes": 4.0,
-      "severe_crashes_per_100m_vmt": 147.08689091085236,
-      "observed_expected_ratio": 31.966222350301035,
+      "severe_crashes_per_100m_vmt": 147.0868909109,
+      "observed_expected_ratio": 31.9662223503,
       "screening_band": "HIGH"
     },
     {
       "route_key": "2154",
       "severe_crashes": 7.0,
-      "severe_crashes_per_100m_vmt": 137.5448171605626,
-      "observed_expected_ratio": 29.89245459781244,
+      "severe_crashes_per_100m_vmt": 137.5448171606,
+      "observed_expected_ratio": 29.8924545978,
       "screening_band": "HIGH"
     },
     {
       "route_key": "2866",
       "severe_crashes": 3.0,
-      "severe_crashes_per_100m_vmt": 136.6280002225741,
-      "observed_expected_ratio": 29.6932038426107,
+      "severe_crashes_per_100m_vmt": 136.6280002226,
+      "observed_expected_ratio": 29.6932038426,
       "screening_band": "HIGH"
     },
     {
       "route_key": "2708",
       "severe_crashes": 7.0,
-      "severe_crashes_per_100m_vmt": 130.3947518574268,
-      "observed_expected_ratio": 28.338539249654456,
+      "severe_crashes_per_100m_vmt": 130.3947518574,
+      "observed_expected_ratio": 28.3385392497,
       "screening_band": "HIGH"
     },
     {
       "route_key": "144",
       "severe_crashes": 4.0,
-      "severe_crashes_per_100m_vmt": 121.01075240600328,
-      "observed_expected_ratio": 26.299125600064734,
+      "severe_crashes_per_100m_vmt": 121.010752406,
+      "observed_expected_ratio": 26.2991256001,
       "screening_band": "HIGH"
     }
   ]

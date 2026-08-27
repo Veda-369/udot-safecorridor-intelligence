@@ -1,6 +1,47 @@
 {
-  "status": "current_layer_unavailable",
-  "generated_at_utc": "2026-08-26T19:15:53.417685+00:00",
+  "status": "success",
+  "generated_at_utc": "2026-08-26T21:05:51.382760+00:00",
   "current_year": 2026,
-  "message": "UDOT has not published a 2026 crash layer yet."
+  "data_as_of_date": "2026-08-24",
+  "data_through_date": "2026-08-24",
+  "comparison_years": [
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "source_layer": {
+    "year": 2026,
+    "source": "nightly_featureserver",
+    "service_url": "https://services.arcgis.com/pA2nEVnB6tquxgOW/ArcGIS/rest/services/Utah_Crash_Locations/FeatureServer",
+    "layer_id": 0
+  },
+  "summary": {
+    "year": 2026,
+    "crashes": 34869,
+    "severe_crashes": 1132,
+    "fatal_crashes": 133
+  },
+  "quality": {
+    "source_records": 34869,
+    "normalized_records": 34869,
+    "dated_monitor_year_records": 34869,
+    "missing_crash_id_records": 0,
+    "invalid_or_missing_crash_datetime_records": 0,
+    "crash_dates_outside_monitor_year_records": 0,
+    "duplicate_non_null_ids_after_normalization": 0
+  },
+  "historical_same_period_average": {
+    "crashes": 36455.8,
+    "severe_crashes": 1085.6,
+    "fatal_crashes": 166.4
+  },
+  "notes": [
+    "Current-year data are preliminary year-to-date observations.",
+    "Recent crashes can be delayed or revised as UDOT completes entry and review.",
+    "TimestampOffset values are normalized to America/Denver before date-based comparisons.",
+    "Undated/current-year-invalid records are excluded from same-period YTD comparisons and reported in quality metrics.",
+    "The current year is excluded from the historical O/E/FDR prioritization model until the calendar year is complete."
+  ]
 }
