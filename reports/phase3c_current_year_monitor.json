@@ -1,9 +1,9 @@
 {
   "status": "success",
-  "generated_at_utc": "2026-08-31T17:38:36.109924+00:00",
+  "generated_at_utc": "2026-09-07T15:52:51.863801+00:00",
   "current_year": 2026,
-  "data_as_of_date": "2026-08-30",
-  "data_through_date": "2026-08-30",
+  "data_as_of_date": "2026-09-01",
+  "data_through_date": "2026-09-01",
   "comparison_years": [
     2021,
     2022,
@@ -19,39 +19,39 @@
   },
   "summary": {
     "year": 2026,
-    "crashes": 36071,
-    "severe_crashes": 1176,
-    "fatal_crashes": 137
+    "crashes": 36463,
+    "severe_crashes": 1193,
+    "fatal_crashes": 141
   },
   "incremental_refresh": {
     "status": "success",
-    "generated_at_utc": "2026-08-31T17:38:34.012462+00:00",
+    "generated_at_utc": "2026-09-07T15:52:49.742051+00:00",
     "year": 2026,
-    "mode": "full_refresh_fallback",
+    "mode": "incremental_reconcile",
     "incremental_enabled": true,
     "reconciliation_days": 60,
     "full_reconciliation_days": 30,
-    "network_rows_fetched": 36071,
-    "rolling_rows_fetched": 0,
-    "new_objectid_rows_fetched": 0,
-    "cached_rows_after_refresh": 36071,
-    "source_revision": 1788190445641,
-    "source_feature_count": 36071,
-    "fallback_reason": "Request failed after 4 attempts: https://services.arcgis.com/pA2nEVnB6tquxgOW/ArcGIS/rest/services/Utah_Crash_Locations/FeatureServer/0/query: {'code': 429, 'message': 'Unable to perform query. Too many requests.', 'details': ['API calls quota exceeded (3199 request units)! maximum allowed request units (3000) per Minute. Retry after 60 sec.']}"
+    "network_rows_fetched": 44335,
+    "rolling_rows_fetched": 7872,
+    "new_objectid_rows_fetched": 36463,
+    "cached_rows_after_refresh": 36463,
+    "source_revision": 1788770200418,
+    "source_feature_count": 36463,
+    "fallback_reason": null
   },
   "quality": {
-    "source_records": 36071,
-    "normalized_records": 36071,
-    "dated_monitor_year_records": 36071,
+    "source_records": 36463,
+    "normalized_records": 36463,
+    "dated_monitor_year_records": 36463,
     "missing_crash_id_records": 0,
     "invalid_or_missing_crash_datetime_records": 0,
     "crash_dates_outside_monitor_year_records": 0,
     "duplicate_non_null_ids_after_normalization": 0
   },
   "historical_same_period_average": {
-    "crashes": 37243.4,
-    "severe_crashes": 1115.2,
-    "fatal_crashes": 169.6
+    "crashes": 37509.4,
+    "severe_crashes": 1122.2,
+    "fatal_crashes": 170.0
   },
   "notes": [
     "Current-year data are preliminary year-to-date observations.",
