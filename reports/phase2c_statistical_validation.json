@@ -1,6 +1,6 @@
 {
   "status": "success",
-  "generated_at_utc": "2026-09-07T15:51:21.018276+00:00",
+  "generated_at_utc": "2026-09-14T16:25:31.343982+00:00",
   "method": {
     "observed_model": "Poisson exceedance test using the Phase 2B peer-expected severe crash count as a fixed expected value.",
     "confidence_interval": "Exact 95% Poisson confidence interval for observed/expected ratio.",
