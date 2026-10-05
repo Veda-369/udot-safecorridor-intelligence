@@ -1,9 +1,9 @@
 {
   "status": "success",
-  "generated_at_utc": "2026-09-28T18:12:56.632990+00:00",
+  "generated_at_utc": "2026-10-05T19:18:56.224934+00:00",
   "current_year": 2026,
-  "data_as_of_date": "2026-09-27",
-  "data_through_date": "2026-09-27",
+  "data_as_of_date": "2026-10-04",
+  "data_through_date": "2026-10-04",
   "comparison_years": [
     2021,
     2022,
@@ -19,39 +19,39 @@
   },
   "summary": {
     "year": 2026,
-    "crashes": 41128,
-    "severe_crashes": 1366,
-    "fatal_crashes": 170
+    "crashes": 42528,
+    "severe_crashes": 1433,
+    "fatal_crashes": 186
   },
   "incremental_refresh": {
     "status": "success",
-    "generated_at_utc": "2026-09-28T18:12:54.405068+00:00",
+    "generated_at_utc": "2026-10-05T19:18:53.967868+00:00",
     "year": 2026,
     "mode": "incremental_reconcile",
     "incremental_enabled": true,
     "reconciliation_days": 60,
     "full_reconciliation_days": 30,
-    "network_rows_fetched": 50516,
-    "rolling_rows_fetched": 9392,
-    "new_objectid_rows_fetched": 41124,
-    "cached_rows_after_refresh": 41128,
-    "source_revision": 1790585402213,
-    "source_feature_count": 41124,
+    "network_rows_fetched": 52256,
+    "rolling_rows_fetched": 9742,
+    "new_objectid_rows_fetched": 42514,
+    "cached_rows_after_refresh": 42528,
+    "source_revision": 1791190454205,
+    "source_feature_count": 42514,
     "fallback_reason": null
   },
   "quality": {
-    "source_records": 41128,
-    "normalized_records": 41128,
-    "dated_monitor_year_records": 41128,
+    "source_records": 42528,
+    "normalized_records": 42528,
+    "dated_monitor_year_records": 42528,
     "missing_crash_id_records": 0,
     "invalid_or_missing_crash_datetime_records": 0,
     "crash_dates_outside_monitor_year_records": 0,
     "duplicate_non_null_ids_after_normalization": 0
   },
   "historical_same_period_average": {
-    "crashes": 41072.4,
-    "severe_crashes": 1236.2,
-    "fatal_crashes": 189.0
+    "crashes": 42073.0,
+    "severe_crashes": 1271.8,
+    "fatal_crashes": 196.2
   },
   "notes": [
     "Current-year data are preliminary year-to-date observations.",
