@@ -1,11 +1,11 @@
 {
   "status": "success",
-  "generated_at_utc": "2026-10-19T16:59:10.245032+00:00",
+  "generated_at_utc": "2026-10-26T16:47:07.614521+00:00",
   "incremental_enabled": true,
   "historical_year_min": 2018,
   "historical_year_max": 2025,
   "rollover_finalized_year": null,
-  "network_rows_fetched": 33847,
+  "network_rows_fetched": 0,
   "combined_rows": 449804,
   "years": [
     {
@@ -87,14 +87,14 @@
     },
     {
       "year": 2025,
-      "mode": "full_refresh",
+      "mode": "cache_reuse",
       "cached_rows": 33847,
-      "network_rows_fetched": 33847,
+      "network_rows_fetched": 0,
       "source_revision": "06c397a4c16242e4bc2928053f856def",
       "source_feature_count": 33847,
       "rollover_final_reconciliation": false,
       "periodic_reconciliation_days": 30,
-      "periodic_full_due": true
+      "periodic_full_due": false
     }
   ]
 }
