@@ -1,6 +1,6 @@
 {
   "status": "success",
-  "generated_at_utc": "2026-11-16T20:26:52.330465+00:00",
+  "generated_at_utc": "2026-11-23T22:02:59.990512+00:00",
   "method": "Spatial linear referencing against official UDOT Routes geometry; 5-mile analytical bins.",
   "spatial_match": {
     "eligible_crashes": 265720,
